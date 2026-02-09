@@ -1,0 +1,24 @@
+﻿
+> my-app@0.0.0 build
+> tsc -b && vite build
+
+src/services/api.ts(36,9): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.
+src/services/api.ts(37,9): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.
+src/services/auth.service.ts(46,5): error TS2741: Property 'timezone' is missing in type '{ theme: "system"; notifications: true; language: string; }' but required in type 'UserPreferences'.
+src/services/bot.service.ts(10,10): error TS2724: '"@/data/bots"' has no exported member named 'demoBot'. Did you mean 'demoBots'?
+src/services/bot.service.ts(112,49): error TS2339: Property 'id' does not exist on type 'Omit<Bot, "id" | "createdAt" | "updatedAt" | "channels" | "taskPacks" | "metrics">'.
+src/services/bot.service.ts(120,13): error TS2322: Type '"idle"' is not assignable to type '"active" | "inactive" | "deploying" | "error"'.
+src/services/bot.service.ts(122,32): error TS2339: Property 'suggestedPacks' does not exist on type 'Omit<Bot, "id" | "createdAt" | "updatedAt" | "channels" | "taskPacks" | "metrics">'.
+src/services/bot.service.ts(134,41): error TS2339: Property 'capabilities' does not exist on type 'Omit<Bot, "id" | "createdAt" | "updatedAt" | "channels" | "taskPacks" | "metrics">'.
+src/services/bot.service.ts(136,21): error TS2353: Object literal may only specify known properties, and 'maxActionsPerMinute' does not exist in type 'Guardrail[]'.
+src/services/bot.service.ts(142,21): error TS2353: Object literal may only specify known properties, and 'canAccessInternet' does not exist in type 'Permission[]'.
+src/services/bot.service.ts(224,13): error TS2322: Type '"active" | "idle"' is not assignable to type '"active" | "inactive" | "deploying" | "error"'.
+  Type '"idle"' is not assignable to type '"active" | "inactive" | "deploying" | "error"'.
+src/services/bot.service.ts(280,13): error TS2322: Type '"paused"' is not assignable to type '"active" | "inactive" | "deploying" | "error"'.
+src/services/bot.service.ts(318,13): error TS2353: Object literal may only specify known properties, and 'packIds' does not exist in type 'Bot'.
+src/services/bot.service.ts(318,54): error TS2339: Property 'packIds' does not exist on type 'Bot'.
+src/services/bot.service.ts(343,13): error TS2561: Object literal may only specify known properties, but 'channelIds' does not exist in type 'Bot'. Did you mean to write 'channels'?
+src/services/bot.service.ts(343,57): error TS2551: Property 'channelIds' does not exist on type 'Bot'. Did you mean 'channels'?
+src/services/channel.service.ts(86,13): error TS2353: Object literal may only specify known properties, and 'messageCount' does not exist in type 'Channel'.
+src/services/channel.service.ts(203,73): error TS2322: Type '"web"' is not assignable to type 'ChannelType'.
+src/services/channel.service.ts(226,40): error TS2339: Property 'messageCount' does not exist on type 'Channel'.

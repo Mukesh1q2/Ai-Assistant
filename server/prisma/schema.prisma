@@ -1,0 +1,98 @@
+// Prisma Schema for Clawd Bot
+// SQLite database for development
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  avatar    String?
+  role      String   @default("owner")
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLoginAt DateTime?
+  
+  // Preferences
+  theme         String @default("system")
+  notifications Boolean @default(true)
+  language      String @default("en")
+  timezone      String @default("UTC")
+  
+  // Plan
+  planTier         String @default("free")
+  executionQuota   Int    @default(1000)
+  usedExecutions   Int    @default(0)
+  channelLimit     Int    @default(3)
+  packLimit        Int    @default(5)
+  familySeats      Int    @default(1)
+  
+  bots     Bot[]
+  channels Channel[]
+}
+
+model Bot {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  avatar      String   @default("/bots/default.png")
+  status      String   @default("inactive")
+  type        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Config
+  personality  String @default("friendly and helpful")
+  memoryScope  String @default("user")
+  
+  // Metrics
+  totalExecutions      Int @default(0)
+  successfulExecutions Int @default(0)
+  failedExecutions     Int @default(0)
+  uptime               Int @default(100)
+  lastActiveAt         DateTime?
+  
+  // Relations
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channels  BotChannel[]
+  taskPacks String    @default("[]") // JSON array
+}
+
+model Channel {
+  id          String   @id @default(cuid())
+  type        String
+  name        String
+  status      String   @default("disconnected")
+  token       String?
+  webhook     String?
+  guildId     String?
+  channelId   String?
+  phoneNumber String?
+  connectedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bots   BotChannel[]
+}
+
+model BotChannel {
+  id        String  @id @default(cuid())
+  botId     String
+  channelId String
+  bot       Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  
+  @@unique([botId, channelId])
+}

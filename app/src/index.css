@@ -1,0 +1,255 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@layer base {
+  :root {
+    /* Light Theme - Soft whites and silvers */
+    --background: 210 33% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 100% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 252 100% 68%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 210 25% 95%;
+    --muted-foreground: 215 20% 35%;
+    --accent: 172 100% 44%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 81%;
+    --input: 214 32% 81%;
+    --ring: 217 100% 65%;
+    --radius: 0.75rem;
+    
+    /* Custom Design Tokens */
+    --ai-glow: 217 100% 65%;
+    --energy: 172 100% 44%;
+    --signal: 37 100% 64%;
+    --surface-elevated: 0 0% 100%;
+    --surface-layer: 210 25% 95%;
+    --text-primary: 222 47% 11%;
+    --text-secondary: 215 20% 35%;
+    
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 217 100% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 25% 95%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 217 100% 65%;
+  }
+
+  .dark {
+    /* Dark Theme - Deep graphite / midnight tones */
+    --background: 216 33% 5%;
+    --foreground: 210 25% 93%;
+    --card: 216 25% 8%;
+    --card-foreground: 210 25% 93%;
+    --popover: 216 25% 8%;
+    --popover-foreground: 210 25% 93%;
+    --primary: 217 100% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 252 100% 68%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 216 20% 15%;
+    --muted-foreground: 213 18% 55%;
+    --accent: 172 100% 44%;
+    --accent-foreground: 210 25% 93%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 213 20% 22%;
+    --input: 213 20% 22%;
+    --ring: 217 100% 65%;
+    
+    /* Custom Design Tokens */
+    --ai-glow: 217 100% 65%;
+    --energy: 172 100% 44%;
+    --signal: 37 100% 64%;
+    --surface-elevated: 216 25% 11%;
+    --surface-layer: 216 20% 15%;
+    --text-primary: 210 25% 93%;
+    --text-secondary: 213 18% 55%;
+    
+    /* Sidebar */
+    --sidebar-background: 216 25% 8%;
+    --sidebar-foreground: 210 25% 93%;
+    --sidebar-primary: 217 100% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 216 20% 15%;
+    --sidebar-accent-foreground: 210 25% 93%;
+    --sidebar-border: 213 20% 15%;
+    --sidebar-ring: 217 100% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+  }
+  
+  code, pre, .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  /* AI Glow Effects */
+  .ai-glow {
+    box-shadow: 0 0 16px hsl(var(--ai-glow) / 0.45);
+  }
+  
+  .ai-glow-strong {
+    box-shadow: 0 0 32px hsl(var(--ai-glow) / 0.6);
+  }
+  
+  .ai-glow-text {
+    text-shadow: 0 0 20px hsl(var(--ai-glow) / 0.8);
+  }
+  
+  /* Gradient Backgrounds */
+  .gradient-ai {
+    background: linear-gradient(135deg, #4F8CFF, #7C5CFF);
+  }
+  
+  .gradient-energy {
+    background: linear-gradient(135deg, #00E0C6, #4F8CFF);
+  }
+  
+  .gradient-signal {
+    background: linear-gradient(135deg, #FFB547, #FF6B6B);
+  }
+  
+  /* Glass Effect */
+  .glass {
+    backdrop-filter: blur(14px);
+    background: hsl(var(--card) / 0.65);
+  }
+  
+  .glass-strong {
+    backdrop-filter: blur(20px);
+    background: hsl(var(--card) / 0.85);
+  }
+  
+  /* Soft Elevation */
+  .elevation-soft {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+  
+  .elevation-deep {
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  }
+  
+  /* Animation Utilities */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+  }
+  
+  .animate-gradient {
+    animation: gradient-shift 8s ease infinite;
+    background-size: 200% 200%;
+  }
+  
+  /* Transition Utilities */
+  .transition-ai {
+    transition: all 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .transition-fast {
+    transition: all 140ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .transition-slow {
+    transition: all 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Selection */
+::selection {
+  background: hsl(var(--primary) / 0.3);
+  color: hsl(var(--foreground));
+}

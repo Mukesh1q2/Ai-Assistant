@@ -1,0 +1,28 @@
+﻿node.exe : The 
+compact formatter 
+is no longer part 
+of core ESLint. 
+Install it manually 
+with `npm install 
+-D eslint-formatter-
+compact`
+At line:1 char:1
++ & "C:\Program File
+s\nodejs/node.exe" 
+"C:\Program Files\no
+dejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo  
+            : NotS  
+  pecified: (The    
+ compact for...m    
+atter-compact`:    
+String) [], Rem    
+oteException
+    + FullyQualifie 
+   dErrorId : Nati  
+  veCommandError
+ 
