@@ -20,7 +20,7 @@ import {
   demoActivities
 } from '@/data/bots';
 import { authService } from '@/services';
-import { clearAuthToken } from '@/services/api';
+import { clearAuthToken, api } from '@/services/api';
 
 // Auth Store
 interface AuthState {
@@ -163,76 +163,90 @@ export const useBotStore = create<BotState>()(
       isLoading: false,
       fetchBots: async () => {
         set({ isLoading: true });
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        set({ bots: demoBots, isLoading: false });
+        try {
+          const response = await api.getBots();
+          if (response.success && response.data && Array.isArray(response.data.data)) {
+            set({ bots: response.data.data, isLoading: false });
+          } else {
+            set({ isLoading: false });
+          }
+        } catch (error) {
+          console.error('Failed to fetch bots:', error);
+          set({ isLoading: false });
+        }
       },
       createBot: async (botData) => {
-        const newBot: Bot = {
-          id: `bot-${Date.now()}`,
-          name: botData.name || 'New Bot',
-          description: botData.description || '',
-          avatar: botData.avatar || '/bots/coding-bot.png',
-          status: 'deploying',
-          type: botData.type || 'coding',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          channels: [],
-          taskPacks: [],
-          metrics: {
-            totalExecutions: 0,
-            successfulExecutions: 0,
-            failedExecutions: 0,
-            lastActive: null,
-            uptime: 100,
-          },
-          config: botData.config || {
-            personality: 'Helpful AI assistant',
-            memoryScope: 'user',
-            guardrails: [],
-            permissions: [],
-          },
-        };
-
-        set((state) => ({ bots: [...state.bots, newBot] }));
-
-        // Simulate deployment
-        setTimeout(() => {
-          set((state) => ({
-            bots: state.bots.map(b =>
-              b.id === newBot.id ? { ...b, status: 'active' } : b
-            ),
-          }));
-        }, 2000);
-
-        return newBot;
+        try {
+          const response = await api.createBot(botData);
+          if (response.success && response.data) {
+            const newBot = response.data;
+            set((state) => ({ bots: [newBot, ...state.bots] }));
+            return newBot;
+          }
+          throw new Error(response.error || 'Failed to create bot');
+        } catch (error) {
+          console.error('Create bot error:', error);
+          throw error;
+        }
       },
-      updateBot: (id, updates) => {
+      updateBot: async (id, updates) => {
+        // Optimistic update
         set((state) => ({
           bots: state.bots.map(bot =>
             bot.id === id ? { ...bot, ...updates, updatedAt: new Date() } : bot
           ),
         }));
+        try {
+          await api.updateBot(id, updates);
+        } catch (error) {
+          console.error('Update bot error:', error);
+          // Revert or show error? For now just log.
+        }
       },
-      deleteBot: (id) => {
+      deleteBot: async (id) => {
         set((state) => ({
           bots: state.bots.filter(bot => bot.id !== id),
           selectedBot: state.selectedBot?.id === id ? null : state.selectedBot,
         }));
+        try {
+          await api.deleteBot(id);
+        } catch (error) {
+          console.error('Delete bot error:', error);
+        }
       },
       selectBot: (bot) => {
         set({ selectedBot: bot });
       },
-      toggleBotStatus: (id) => {
+      toggleBotStatus: async (id) => {
+        const bot = _get().bots.find(b => b.id === id);
+        if (!bot) return;
+
+        // Optimistic
+        const newStatus = bot.status === 'active' ? 'inactive' : 'active';
         set((state) => ({
-          bots: state.bots.map(bot =>
-            bot.id === id
-              ? { ...bot, status: bot.status === 'active' ? 'inactive' : 'active' }
-              : bot
-          ),
+          bots: state.bots.map(b => b.id === id ? { ...b, status: newStatus } : b)
         }));
+
+        try {
+          if (newStatus === 'active') {
+            await api.startBot(id); // or deploy? startBot implies existing deployed bot?
+            // Backend has start/stop/deploy. 
+            // deploy sets status='active'.
+            // start sets status='active'.
+            // stop sets status='inactive'.
+          } else {
+            await api.stopBot(id);
+          }
+        } catch (error) {
+          console.error('Toggle status error:', error);
+          // Revert
+          set((state) => ({
+            bots: state.bots.map(b => b.id === id ? { ...b, status: bot.status } : b)
+          }));
+        }
       },
       assignPack: (botId, packId) => {
+        // Not implemented in backend yet
         set((state) => ({
           bots: state.bots.map(bot =>
             bot.id === botId
@@ -309,34 +323,51 @@ export const useChannelStore = create<ChannelState>()(
     (set) => ({
       channels: [],
       fetchChannels: async () => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        set({ channels: demoChannels });
+        try {
+          const response = await api.getChannels();
+          if (response.success && response.data && Array.isArray(response.data.data)) {
+            set({ channels: response.data.data });
+          }
+        } catch (error) {
+          console.error('Failed to fetch channels:', error);
+        }
       },
       connectChannel: async (type, config) => {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const newChannel: Channel = {
-          id: `channel-${Date.now()}`,
-          type: type as any,
-          name: type.charAt(0).toUpperCase() + type.slice(1),
-          status: 'connected',
-          config,
-          connectedAt: new Date(),
-        };
-        set((state) => ({ channels: [...state.channels, newChannel] }));
+        try {
+          const response = await api.connectChannel(type, config);
+          if (response.success && response.data) {
+            set((state) => ({ channels: [...state.channels, response.data] }));
+          }
+        } catch (error) {
+          console.error('Connect channel error:', error);
+          // Optionally throw to let UI handle it
+        }
       },
-      disconnectChannel: (id) => {
+      disconnectChannel: async (id) => {
+        // Optimistic
         set((state) => ({
           channels: state.channels.map(ch =>
             ch.id === id ? { ...ch, status: 'disconnected' } : ch
           ),
         }));
+        try {
+          await api.disconnectChannel(id);
+        } catch (error) {
+          console.error('Disconnect channel error:', error);
+          // Revert?
+        }
       },
-      updateChannel: (id, updates) => {
+      updateChannel: async (id, updates) => {
         set((state) => ({
           channels: state.channels.map(ch =>
             ch.id === id ? { ...ch, ...updates } : ch
           ),
         }));
+        try {
+          await api.updateChannel(id, updates);
+        } catch (error) {
+          console.error('Update channel error:', error);
+        }
       },
     }),
     {

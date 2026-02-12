@@ -14,16 +14,16 @@ export interface Bot {
   config: BotConfig;
 }
 
-export type BotType = 
-  | 'email' 
-  | 'calendar' 
-  | 'chores' 
-  | 'smarthome' 
-  | 'family' 
-  | 'routine' 
-  | 'wellness' 
-  | 'entertainment' 
-  | 'travel' 
+export type BotType =
+  | 'email'
+  | 'calendar'
+  | 'chores'
+  | 'smarthome'
+  | 'family'
+  | 'routine'
+  | 'wellness'
+  | 'entertainment'
+  | 'travel'
   | 'coding';
 
 export interface BotMetrics {
@@ -37,6 +37,10 @@ export interface BotMetrics {
 export interface BotConfig {
   personality: string;
   memoryScope: 'user' | 'family' | 'global';
+  systemPrompt?: string;
+  modelProvider?: string;
+  modelName?: string;
+  temperature?: number;
   guardrails: Guardrail[];
   permissions: Permission[];
 }
@@ -69,13 +73,13 @@ export interface TaskPack {
   schedules: Schedule[];
 }
 
-export type PackCategory = 
-  | 'productivity' 
-  | 'home' 
-  | 'family' 
-  | 'health' 
-  | 'entertainment' 
-  | 'travel' 
+export type PackCategory =
+  | 'productivity'
+  | 'home'
+  | 'family'
+  | 'health'
+  | 'entertainment'
+  | 'travel'
   | 'development';
 
 export interface PackConfig {
@@ -196,15 +200,15 @@ export interface Activity {
   createdAt: Date;
 }
 
-export type ActivityType = 
-  | 'bot_created' 
-  | 'bot_updated' 
-  | 'bot_deleted' 
-  | 'pack_enabled' 
-  | 'pack_disabled' 
+export type ActivityType =
+  | 'bot_created'
+  | 'bot_updated'
+  | 'bot_deleted'
+  | 'pack_enabled'
+  | 'pack_disabled'
   | 'pack_executed'
-  | 'channel_connected' 
-  | 'channel_disconnected' 
+  | 'channel_connected'
+  | 'channel_disconnected'
   | 'message_received'
   | 'message_sent'
   | 'task_executed'

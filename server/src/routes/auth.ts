@@ -60,7 +60,7 @@ router.post('/login', async (req: Request, res: Response) => {
     try {
         const { email, password } = loginSchema.parse(req.body);
 
-        const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+        const user = await db.prepare('SELECT * FROM users WHERE email = $1').get(email) as any;
         if (!user) {
             return res.status(401).json({
                 success: false,
@@ -77,7 +77,7 @@ router.post('/login', async (req: Request, res: Response) => {
         }
 
         // Update last login
-        db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?')
+        await db.prepare('UPDATE users SET last_login_at = $1 WHERE id = $2')
             .run(new Date().toISOString(), user.id);
 
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
@@ -102,7 +102,7 @@ router.post('/signup', async (req: Request, res: Response) => {
     try {
         const { name, email, password } = signupSchema.parse(req.body);
 
-        const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+        const existing = await db.prepare('SELECT id FROM users WHERE email = $1').get(email);
         if (existing) {
             return res.status(400).json({
                 success: false,
@@ -113,12 +113,12 @@ router.post('/signup', async (req: Request, res: Response) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const id = 'user-' + Date.now();
 
-        db.prepare(`
+        await db.prepare(`
       INSERT INTO users (id, email, password, name, avatar)
-      VALUES (?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5)
     `).run(id, email, hashedPassword, name, `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`);
 
-        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+        const user = await db.prepare('SELECT * FROM users WHERE id = $1').get(id);
         const token = jwt.sign({ userId: id }, JWT_SECRET, { expiresIn: '7d' });
 
         return res.status(201).json({
@@ -143,7 +143,7 @@ router.post('/logout', (_req: Request, res: Response) => {
 
 // GET /api/auth/me
 router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.userId) as any;
+    const user = await db.prepare('SELECT * FROM users WHERE id = $1').get(req.userId) as any;
 
     if (!user) {
         return res.status(404).json({ success: false, error: 'User not found' });

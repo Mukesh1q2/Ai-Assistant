@@ -21,6 +21,10 @@ const createBotSchema = z.object({
     avatar: z.string().optional(),
     personality: z.string().optional(),
     memoryScope: z.enum(['user', 'family', 'global']).optional(),
+    systemPrompt: z.string().optional(),
+    modelProvider: z.string().optional(),
+    modelName: z.string().optional(),
+    temperature: z.number().optional(),
 });
 
 const updateBotSchema = z.object({
@@ -30,6 +34,10 @@ const updateBotSchema = z.object({
     status: z.enum(['active', 'inactive', 'deploying', 'error']).optional(),
     personality: z.string().optional(),
     memoryScope: z.enum(['user', 'family', 'global']).optional(),
+    systemPrompt: z.string().optional(),
+    modelProvider: z.string().optional(),
+    modelName: z.string().optional(),
+    temperature: z.number().optional(),
 });
 
 // Helper to format bot response
@@ -55,6 +63,10 @@ function formatBot(bot: any) {
         config: {
             personality: bot.personality,
             memoryScope: bot.memory_scope,
+            systemPrompt: bot.system_prompt,
+            modelProvider: bot.model_provider,
+            modelName: bot.model_name,
+            temperature: bot.temperature,
             guardrails: [],
             permissions: [],
         },
@@ -62,8 +74,8 @@ function formatBot(bot: any) {
 }
 
 // GET /api/bots
-router.get('/', (req: AuthRequest, res: Response) => {
-    const bots = db.prepare('SELECT * FROM bots WHERE user_id = ? ORDER BY created_at DESC')
+router.get('/', async (req: AuthRequest, res: Response) => {
+    const bots = await db.prepare('SELECT * FROM bots WHERE user_id = $1 ORDER BY created_at DESC')
         .all(req.userId) as any[];
 
     return res.json({
@@ -79,8 +91,8 @@ router.get('/', (req: AuthRequest, res: Response) => {
 });
 
 // GET /api/bots/:id
-router.get('/:id', (req: AuthRequest, res: Response) => {
-    const bot = db.prepare('SELECT * FROM bots WHERE id = ? AND user_id = ?')
+router.get('/:id', async (req: AuthRequest, res: Response) => {
+    const bot = await db.prepare('SELECT * FROM bots WHERE id = $1 AND user_id = $2')
         .get(req.params.id, req.userId) as any;
 
     if (!bot) {
@@ -91,14 +103,14 @@ router.get('/:id', (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/bots
-router.post('/', (req: AuthRequest, res: Response) => {
+router.post('/', async (req: AuthRequest, res: Response) => {
     try {
         const data = createBotSchema.parse(req.body);
         const id = 'bot-' + Date.now();
 
-        db.prepare(`
+        await db.prepare(`
       INSERT INTO bots (id, name, description, type, avatar, personality, memory_scope, user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `).run(
             id,
             data.name,
@@ -110,7 +122,7 @@ router.post('/', (req: AuthRequest, res: Response) => {
             req.userId
         );
 
-        const bot = db.prepare('SELECT * FROM bots WHERE id = ?').get(id);
+        const bot = await db.prepare('SELECT * FROM bots WHERE id = $1').get(id);
 
         return res.status(201).json({
             success: true,
@@ -126,11 +138,11 @@ router.post('/', (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/bots/:id
-router.put('/:id', (req: AuthRequest, res: Response) => {
+router.put('/:id', async (req: AuthRequest, res: Response) => {
     try {
         const data = updateBotSchema.parse(req.body);
 
-        const existing = db.prepare('SELECT * FROM bots WHERE id = ? AND user_id = ?')
+        const existing = await db.prepare('SELECT * FROM bots WHERE id = $1 AND user_id = $2')
             .get(req.params.id, req.userId);
 
         if (!existing) {
@@ -139,21 +151,28 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
 
         const updates: string[] = [];
         const values: any[] = [];
+        let paramIndex = 1;
 
-        if (data.name !== undefined) { updates.push('name = ?'); values.push(data.name); }
-        if (data.description !== undefined) { updates.push('description = ?'); values.push(data.description); }
-        if (data.avatar !== undefined) { updates.push('avatar = ?'); values.push(data.avatar); }
-        if (data.status !== undefined) { updates.push('status = ?'); values.push(data.status); }
-        if (data.personality !== undefined) { updates.push('personality = ?'); values.push(data.personality); }
-        if (data.memoryScope !== undefined) { updates.push('memory_scope = ?'); values.push(data.memoryScope); }
+        if (data.name !== undefined) { updates.push(`name = $${paramIndex++}`); values.push(data.name); }
+        if (data.description !== undefined) { updates.push(`description = $${paramIndex++}`); values.push(data.description); }
+        if (data.avatar !== undefined) { updates.push(`avatar = $${paramIndex++}`); values.push(data.avatar); }
+        if (data.status !== undefined) { updates.push(`status = $${paramIndex++}`); values.push(data.status); }
+        if (data.personality !== undefined) { updates.push(`personality = $${paramIndex++}`); values.push(data.personality); }
+        if (data.memoryScope !== undefined) { updates.push(`memory_scope = $${paramIndex++}`); values.push(data.memoryScope); }
+        if (data.systemPrompt !== undefined) { updates.push(`system_prompt = $${paramIndex++}`); values.push(data.systemPrompt); }
+        if (data.modelProvider !== undefined) { updates.push(`model_provider = $${paramIndex++}`); values.push(data.modelProvider); }
+        if (data.modelName !== undefined) { updates.push(`model_name = $${paramIndex++}`); values.push(data.modelName); }
+        if (data.temperature !== undefined) { updates.push(`temperature = $${paramIndex++}`); values.push(data.temperature); }
 
-        updates.push('updated_at = ?');
+        updates.push(`updated_at = $${paramIndex++}`);
         values.push(new Date().toISOString());
+
+        // Add ID parameter for WHERE clause
         values.push(req.params.id);
 
-        db.prepare(`UPDATE bots SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+        await db.prepare(`UPDATE bots SET ${updates.join(', ')} WHERE id = $${paramIndex}`).run(...values);
 
-        const bot = db.prepare('SELECT * FROM bots WHERE id = ?').get(req.params.id);
+        const bot = await db.prepare('SELECT * FROM bots WHERE id = $1').get(req.params.id);
 
         return res.json({
             success: true,
@@ -169,32 +188,32 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
 });
 
 // DELETE /api/bots/:id
-router.delete('/:id', (req: AuthRequest, res: Response) => {
-    const existing = db.prepare('SELECT id FROM bots WHERE id = ? AND user_id = ?')
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
+    const existing = await db.prepare('SELECT id FROM bots WHERE id = $1 AND user_id = $2')
         .get(req.params.id, req.userId);
 
     if (!existing) {
         return res.status(404).json({ success: false, error: 'Bot not found' });
     }
 
-    db.prepare('DELETE FROM bots WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM bots WHERE id = $1').run(req.params.id);
 
     return res.json({ success: true, message: 'Bot deleted successfully' });
 });
 
 // POST /api/bots/:id/deploy
-router.post('/:id/deploy', (req: AuthRequest, res: Response) => {
-    const existing = db.prepare('SELECT id FROM bots WHERE id = ? AND user_id = ?')
+router.post('/:id/deploy', async (req: AuthRequest, res: Response) => {
+    const existing = await db.prepare('SELECT id FROM bots WHERE id = $1 AND user_id = $2')
         .get(req.params.id, req.userId);
 
     if (!existing) {
         return res.status(404).json({ success: false, error: 'Bot not found' });
     }
 
-    db.prepare('UPDATE bots SET status = ?, updated_at = ? WHERE id = ?')
+    await db.prepare('UPDATE bots SET status = $1, updated_at = $2 WHERE id = $3')
         .run('active', new Date().toISOString(), req.params.id);
 
-    const bot = db.prepare('SELECT * FROM bots WHERE id = ?').get(req.params.id);
+    const bot = await db.prepare('SELECT * FROM bots WHERE id = $1').get(req.params.id);
 
     return res.json({
         success: true,
@@ -204,18 +223,18 @@ router.post('/:id/deploy', (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/bots/:id/start
-router.post('/:id/start', (req: AuthRequest, res: Response) => {
-    const existing = db.prepare('SELECT id FROM bots WHERE id = ? AND user_id = ?')
+router.post('/:id/start', async (req: AuthRequest, res: Response) => {
+    const existing = await db.prepare('SELECT id FROM bots WHERE id = $1 AND user_id = $2')
         .get(req.params.id, req.userId);
 
     if (!existing) {
         return res.status(404).json({ success: false, error: 'Bot not found' });
     }
 
-    db.prepare('UPDATE bots SET status = ?, updated_at = ? WHERE id = ?')
+    await db.prepare('UPDATE bots SET status = $1, updated_at = $2 WHERE id = $3')
         .run('active', new Date().toISOString(), req.params.id);
 
-    const bot = db.prepare('SELECT * FROM bots WHERE id = ?').get(req.params.id);
+    const bot = await db.prepare('SELECT * FROM bots WHERE id = $1').get(req.params.id);
 
     return res.json({
         success: true,
@@ -225,18 +244,18 @@ router.post('/:id/start', (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/bots/:id/stop
-router.post('/:id/stop', (req: AuthRequest, res: Response) => {
-    const existing = db.prepare('SELECT id FROM bots WHERE id = ? AND user_id = ?')
+router.post('/:id/stop', async (req: AuthRequest, res: Response) => {
+    const existing = await db.prepare('SELECT id FROM bots WHERE id = $1 AND user_id = $2')
         .get(req.params.id, req.userId);
 
     if (!existing) {
         return res.status(404).json({ success: false, error: 'Bot not found' });
     }
 
-    db.prepare('UPDATE bots SET status = ?, updated_at = ? WHERE id = ?')
+    await db.prepare('UPDATE bots SET status = $1, updated_at = $2 WHERE id = $3')
         .run('inactive', new Date().toISOString(), req.params.id);
 
-    const bot = db.prepare('SELECT * FROM bots WHERE id = ?').get(req.params.id);
+    const bot = await db.prepare('SELECT * FROM bots WHERE id = $1').get(req.params.id);
 
     return res.json({
         success: true,

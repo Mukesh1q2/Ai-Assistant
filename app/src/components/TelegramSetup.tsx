@@ -70,7 +70,7 @@ export default function TelegramSetup({ isOpen, onClose, onSuccess }: TelegramSe
             const response = await api.post('/platforms/telegram/setup', {
                 botToken: botToken.trim(),
                 webhookBaseUrl: webhookUrl.trim() || undefined,
-            });
+            }) as any;
 
             if (response.success && response.integration) {
                 setIntegration(response.integration);

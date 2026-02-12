@@ -128,4 +128,27 @@ export const api = {
 
     delete: <T>(endpoint: string) =>
         apiRequest<T>(endpoint, { method: 'DELETE' }),
+
+    // Settings API
+    getSettings: () => api.get<any>('/settings/keys'),
+    updateSettings: (data: any) => api.put<any>('/settings/keys', data),
+
+    // Analytics API
+    getAnalytics: (period: string = '30d') => api.get<any>(`/analytics?period=${period}`),
+
+    // Bots API
+    getBots: () => api.get<any>('/bots'),
+    getBot: (id: string) => api.get<any>(`/bots/${id}`),
+    createBot: (data: any) => api.post<any>('/bots', data),
+    updateBot: (id: string, data: any) => api.put<any>(`/bots/${id}`, data),
+    deleteBot: (id: string) => api.delete<any>(`/bots/${id}`),
+    deployBot: (id: string) => api.post<any>(`/bots/${id}/deploy`),
+    startBot: (id: string) => api.post<any>(`/bots/${id}/start`),
+    stopBot: (id: string) => api.post<any>(`/bots/${id}/stop`),
+
+    // Channels API
+    getChannels: () => api.get<any>('/channels'),
+    connectChannel: (type: string, config: any) => api.post<any>('/channels', { type, config }),
+    disconnectChannel: (id: string) => api.delete<any>(`/channels/${id}`),
+    updateChannel: (id: string, data: any) => api.put<any>(`/channels/${id}`, data),
 };

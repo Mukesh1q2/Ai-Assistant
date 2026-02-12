@@ -5,8 +5,9 @@
 
 import { Router, Request, Response } from 'express';
 import { v4 as uuid } from 'uuid';
-import db from '../db.js';
+import { db } from '../db';
 import { TelegramIntegration, WhatsAppIntegration } from '../integrations/index.js';
+import { aiService } from '../services/ai';
 
 const router = Router();
 
@@ -62,10 +63,10 @@ router.post('/telegram/setup', async (req: Request, res: Response) => {
         id, user_id, platform, name, status,
         bot_token, webhook_url, webhook_secret,
         telegram_bot_id, telegram_bot_username
-      ) VALUES (?, ?, 'telegram', ?, 'connected', ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, 'telegram', $3, 'connected', $4, $5, $6, $7, $8)
     `);
 
-        stmt.run(
+        await stmt.run(
             integrationId,
             userId,
             `@${validation.botInfo!.username}`,
@@ -104,8 +105,8 @@ router.post('/telegram/webhook/:integrationId', async (req: Request, res: Respon
         const secretToken = req.headers['x-telegram-bot-api-secret-token'];
 
         // Find integration
-        const integration: any = db.prepare(
-            'SELECT * FROM platform_integrations WHERE id = ? AND platform = ?'
+        const integration: any = await db.prepare(
+            'SELECT * FROM platform_integrations WHERE id = $1 AND platform = $2'
         ).get(integrationId, 'telegram');
 
         if (!integration) {
@@ -123,11 +124,11 @@ router.post('/telegram/webhook/:integrationId', async (req: Request, res: Respon
         if (update.type === 'message' && update.text && update.chatId) {
             // Store incoming message
             const messageId = uuid();
-            db.prepare(`
+            await db.prepare(`
         INSERT INTO messages (
           id, integration_id, platform, direction, chat_id,
           user_id_external, username, message_text, platform_message_id
-        ) VALUES (?, ?, 'telegram', 'incoming', ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, 'telegram', 'incoming', $3, $4, $5, $6, $7)
       `).run(
                 messageId,
                 integrationId,
@@ -138,21 +139,55 @@ router.post('/telegram/webhook/:integrationId', async (req: Request, res: Respon
                 update.messageId ? String(update.messageId) : null
             );
 
-            // Auto-respond with echo for now (can be extended to bot logic)
-            const response = `Echo: ${update.text}`;
-            const sentMessage = await telegram.sendMessage(update.chatId, response);
+            // Find active bot for user
+            // In a real multi-bot scenario, we might router based on context or user selection
+            // For now, we pick the most recently updated active bot
+            const activeBot = await db.prepare(`
+                SELECT * FROM bots 
+                WHERE user_id = $1 AND status = 'active' 
+                ORDER BY updated_at DESC LIMIT 1
+            `).get(integration.user_id) as any;
+
+            let responseText = '';
+
+            if (!activeBot) {
+                responseText = "⚠️ No active AI assistant found. Please create and deploy a bot from your dashboard.";
+            } else {
+                try {
+                    // Generate AI response
+                    // We need to fetch the USER's API keys (not server env) if we want per-user billing
+                    // For now, AIService uses server env keys, but we can pass user keys later
+
+                    // Actually, let's just use the server keys for the MVP as the user asked for "guideline for customers how to setup API key"
+                    // which means we SHOULD implement per-user keys in AIService.generateResponse
+                    // But AIService currently takes (userId, botId, prompt) and expects internally to handle keys.
+                    // We'll update AIService later to fetch user keys.
+
+                    responseText = await aiService.generateResponse(
+                        integration.user_id,
+                        activeBot.id,
+                        update.text,
+                        integration.id
+                    );
+                } catch (err: any) {
+                    console.error('AI Processing Error:', err);
+                    responseText = "⚠️ I'm having trouble thinking right now. Please try again later.";
+                }
+            }
+
+            const sentMessage = await telegram.sendMessage(update.chatId, responseText);
 
             // Store outgoing message
-            db.prepare(`
+            await db.prepare(`
         INSERT INTO messages (
           id, integration_id, platform, direction, chat_id,
           message_text, platform_message_id, status
-        ) VALUES (?, ?, 'telegram', 'outgoing', ?, ?, ?, 'sent')
+        ) VALUES ($1, $2, 'telegram', 'outgoing', $3, $4, $5, 'sent')
       `).run(
                 uuid(),
                 integrationId,
                 String(update.chatId),
-                response,
+                responseText,
                 String(sentMessage.message_id)
             );
         }
@@ -176,8 +211,8 @@ router.post('/telegram/:integrationId/send', async (req: Request, res: Response)
         const userId = (req as any).userId;
 
         // Find integration
-        const integration: any = db.prepare(
-            'SELECT * FROM platform_integrations WHERE id = ? AND user_id = ? AND platform = ?'
+        const integration: any = await db.prepare(
+            'SELECT * FROM platform_integrations WHERE id = $1 AND user_id = $2 AND platform = $3'
         ).get(integrationId, userId, 'telegram');
 
         if (!integration) {
@@ -188,11 +223,11 @@ router.post('/telegram/:integrationId/send', async (req: Request, res: Response)
         const sentMessage = await telegram.sendMessage(chatId, text);
 
         // Store outgoing message
-        db.prepare(`
+        await db.prepare(`
       INSERT INTO messages (
         id, integration_id, platform, direction, chat_id,
         message_text, platform_message_id, status
-      ) VALUES (?, ?, 'telegram', 'outgoing', ?, ?, ?, 'sent')
+      ) VALUES ($1, $2, 'telegram', 'outgoing', $3, $4, $5, 'sent')
     `).run(
             uuid(),
             integrationId,
@@ -246,12 +281,12 @@ router.post('/whatsapp/setup', async (req: Request, res: Response) => {
         const integrationId = uuid();
         const finalVerifyToken = verifyToken || uuid();
 
-        db.prepare(`
+        await db.prepare(`
       INSERT INTO platform_integrations (
         id, user_id, platform, name, status,
         whatsapp_phone_number_id, whatsapp_access_token,
         whatsapp_business_account_id, whatsapp_verify_token, whatsapp_display_number
-      ) VALUES (?, ?, 'whatsapp', ?, 'connected', ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, 'whatsapp', $3, 'connected', $4, $5, $6, $7, $8)
     `).run(
             integrationId,
             userId,
@@ -344,11 +379,11 @@ router.post('/whatsapp/webhook/:integrationId', async (req: Request, res: Respon
             if (update.type === 'message' && update.text && update.from) {
                 // Store incoming message
                 const messageId = uuid();
-                db.prepare(`
+                await db.prepare(`
           INSERT INTO messages (
             id, integration_id, platform, direction, chat_id,
             user_id_external, user_name, message_text, platform_message_id
-          ) VALUES (?, ?, 'whatsapp', 'incoming', ?, ?, ?, ?, ?)
+          ) VALUES ($1, $2, 'whatsapp', 'incoming', $3, $4, $5, $6, $7)
         `).run(
                     messageId,
                     integrationId,
@@ -364,21 +399,44 @@ router.post('/whatsapp/webhook/:integrationId', async (req: Request, res: Respon
                     await whatsapp.markAsRead(update.messageId);
                 }
 
-                // Auto-respond with echo
-                const response = `Echo: ${update.text}`;
-                const sent = await whatsapp.sendTextMessage(update.from, response);
+                // Find active bot
+                const activeBot = await db.prepare(`
+                    SELECT * FROM bots 
+                    WHERE user_id = $1 AND status = 'active' 
+                    ORDER BY updated_at DESC LIMIT 1
+                `).get(integration.user_id) as any;
+
+                let responseText = '';
+
+                if (!activeBot) {
+                    responseText = "⚠️ No active AI assistant found. Please deploy a bot.";
+                } else {
+                    try {
+                        responseText = await aiService.generateResponse(
+                            integration.user_id,
+                            activeBot.id,
+                            update.text,
+                            integration.id
+                        );
+                    } catch (err: any) {
+                        console.error('AI Processing Error:', err);
+                        responseText = "⚠️ System Error: Unable to process request.";
+                    }
+                }
+
+                const sent = await whatsapp.sendTextMessage(update.from, responseText);
 
                 // Store outgoing message
-                db.prepare(`
+                await db.prepare(`
           INSERT INTO messages (
             id, integration_id, platform, direction, chat_id,
             message_text, platform_message_id, status
-          ) VALUES (?, ?, 'whatsapp', 'outgoing', ?, ?, ?, 'sent')
+          ) VALUES ($1, $2, 'whatsapp', 'outgoing', $3, $4, $5, 'sent')
         `).run(
                     uuid(),
                     integrationId,
                     update.from,
-                    response,
+                    responseText,
                     sent.messageId
                 );
             }
@@ -400,17 +458,17 @@ router.post('/whatsapp/webhook/:integrationId', async (req: Request, res: Respon
  * GET /api/platforms
  * Get all integrations for the current user
  */
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
     try {
         const userId = (req as any).userId;
 
-        const integrations = db.prepare(`
+        const integrations = await db.prepare(`
       SELECT 
         id, platform, name, status, webhook_url,
         telegram_bot_username, whatsapp_display_number,
         created_at, updated_at
       FROM platform_integrations 
-      WHERE user_id = ?
+      WHERE user_id = $1
       ORDER BY created_at DESC
     `).all(userId);
 
@@ -431,8 +489,8 @@ router.delete('/:integrationId', async (req: Request, res: Response) => {
         const userId = (req as any).userId;
 
         // Find integration
-        const integration: any = db.prepare(
-            'SELECT * FROM platform_integrations WHERE id = ? AND user_id = ?'
+        const integration: any = await db.prepare(
+            'SELECT * FROM platform_integrations WHERE id = $1 AND user_id = $2'
         ).get(integrationId, userId);
 
         if (!integration) {
@@ -446,7 +504,7 @@ router.delete('/:integrationId', async (req: Request, res: Response) => {
         }
 
         // Delete from database (messages will cascade delete)
-        db.prepare('DELETE FROM platform_integrations WHERE id = ?').run(integrationId);
+        await db.prepare('DELETE FROM platform_integrations WHERE id = $1').run(integrationId);
 
         res.json({ success: true });
     } catch (error: any) {
@@ -459,26 +517,26 @@ router.delete('/:integrationId', async (req: Request, res: Response) => {
  * GET /api/platforms/:integrationId/messages
  * Get message history for an integration
  */
-router.get('/:integrationId/messages', (req: Request, res: Response) => {
+router.get('/:integrationId/messages', async (req: Request, res: Response) => {
     try {
         const { integrationId } = req.params;
         const userId = (req as any).userId;
         const limit = parseInt(req.query.limit as string) || 50;
 
         // Verify ownership
-        const integration = db.prepare(
-            'SELECT id FROM platform_integrations WHERE id = ? AND user_id = ?'
+        const integration = await db.prepare(
+            'SELECT id FROM platform_integrations WHERE id = $1 AND user_id = $2'
         ).get(integrationId, userId);
 
         if (!integration) {
             return res.status(404).json({ error: 'Integration not found' });
         }
 
-        const messages = db.prepare(`
+        const messages = await db.prepare(`
       SELECT * FROM messages 
-      WHERE integration_id = ?
+      WHERE integration_id = $1
       ORDER BY created_at DESC
-      LIMIT ?
+      LIMIT $2
     `).all(integrationId, limit);
 
         res.json(messages);

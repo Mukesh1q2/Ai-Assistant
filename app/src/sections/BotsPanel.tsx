@@ -47,7 +47,7 @@ import type { Bot } from '@/types';
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { 
+  visible: {
     opacity: 1,
     transition: { staggerChildren: 0.05 }
   },
@@ -66,7 +66,7 @@ export default function BotsPanel() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [creatingBot, setCreatingBot] = useState<string | null>(null);
 
-  const filteredBots = bots.filter(bot => 
+  const filteredBots = bots.filter(bot =>
     bot.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bot.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -156,8 +156,8 @@ export default function BotsPanel() {
                     className="text-left p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all group disabled:opacity-50"
                   >
                     <div className="flex items-start gap-3">
-                      <img 
-                        src={template.avatar} 
+                      <img
+                        src={template.avatar}
                         alt={template.name}
                         className="w-12 h-12 rounded-xl object-cover group-hover:scale-105 transition-transform"
                       />
@@ -195,7 +195,7 @@ export default function BotsPanel() {
       {/* Bots Grid */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filteredBots.map((bot) => (
-          <Card 
+          <Card
             key={bot.id}
             className="group hover:border-primary/30 transition-all cursor-pointer"
             onClick={() => handleViewDetails(bot)}
@@ -204,8 +204,8 @@ export default function BotsPanel() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <img 
-                      src={bot.avatar} 
+                    <img
+                      src={bot.avatar}
                       alt={bot.name}
                       className="w-12 h-12 rounded-xl object-cover group-hover:scale-105 transition-transform"
                     />
@@ -220,7 +220,7 @@ export default function BotsPanel() {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button 
+                    <button
                       className="p-2 rounded-lg hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -252,7 +252,7 @@ export default function BotsPanel() {
                       Configure
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       className="text-red-500"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -291,7 +291,7 @@ export default function BotsPanel() {
       </motion.div>
 
       {filteredBots.length === 0 && (
-        <motion.div 
+        <motion.div
           variants={itemVariants}
           className="text-center py-16"
         >
@@ -318,8 +318,8 @@ export default function BotsPanel() {
             <>
               <SheetHeader className="pb-4">
                 <div className="flex items-center gap-4">
-                  <img 
-                    src={selectedBot.avatar} 
+                  <img
+                    src={selectedBot.avatar}
                     alt={selectedBot.name}
                     className="w-16 h-16 rounded-xl object-cover"
                   />
@@ -344,7 +344,7 @@ export default function BotsPanel() {
 
                 <TabsContent value="overview" className="space-y-4">
                   <p className="text-muted-foreground">{selectedBot.description}</p>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <Card>
                       <CardContent className="pt-6">
@@ -386,7 +386,7 @@ export default function BotsPanel() {
                 <TabsContent value="packs" className="space-y-4">
                   <div className="space-y-2">
                     {packs.map((pack) => (
-                      <div 
+                      <div
                         key={pack.id}
                         className="flex items-center justify-between p-3 rounded-lg border border-border"
                       >
@@ -399,7 +399,7 @@ export default function BotsPanel() {
                             <p className="text-xs text-muted-foreground">{pack.description}</p>
                           </div>
                         </div>
-                        <Switch 
+                        <Switch
                           checked={selectedBot.taskPacks.includes(pack.id)}
                           onCheckedChange={(checked) => {
                             if (checked) {
@@ -422,7 +422,7 @@ export default function BotsPanel() {
                     <CardContent className="space-y-4">
                       <div>
                         <label className="text-sm font-medium mb-1 block">Personality</label>
-                        <Input 
+                        <Input
                           value={selectedBot.config.personality}
                           onChange={(e) => updateBot(selectedBot.id, {
                             config: { ...selectedBot.config, personality: e.target.value }
@@ -431,7 +431,7 @@ export default function BotsPanel() {
                       </div>
                       <div>
                         <label className="text-sm font-medium mb-1 block">Memory Scope</label>
-                        <select 
+                        <select
                           className="w-full p-2 rounded-md border border-input bg-background"
                           value={selectedBot.config.memoryScope}
                           onChange={(e) => updateBot(selectedBot.id, {
@@ -442,6 +442,48 @@ export default function BotsPanel() {
                           <option value="family">Family</option>
                           <option value="global">Global</option>
                         </select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">System Instructions (Prompt)</label>
+                        <textarea
+                          className="w-full h-32 p-2 rounded-md border border-input bg-background resize-none text-sm"
+                          value={selectedBot.config.systemPrompt || ''}
+                          placeholder="You are a helpful assistant..."
+                          onChange={(e) => updateBot(selectedBot.id, {
+                            config: { ...selectedBot.config, systemPrompt: e.target.value }
+                          })}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Model Provider</label>
+                          <select
+                            className="w-full p-2 rounded-md border border-input bg-background"
+                            value={selectedBot.config.modelProvider || 'openai'}
+                            onChange={(e) => updateBot(selectedBot.id, {
+                              config: { ...selectedBot.config, modelProvider: e.target.value }
+                            })}
+                          >
+                            <option value="openai">OpenAI</option>
+                            <option value="gemini">Google Gemini</option>
+                            <option value="anthropic">Anthropic</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Temperature</label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="1"
+                            value={selectedBot.config.temperature || 0.7}
+                            onChange={(e) => updateBot(selectedBot.id, {
+                              config: { ...selectedBot.config, temperature: parseFloat(e.target.value) }
+                            })}
+                          />
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

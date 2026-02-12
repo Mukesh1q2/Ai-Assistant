@@ -50,8 +50,8 @@ function formatChannel(channel: any) {
 }
 
 // GET /api/channels
-router.get('/', (req: AuthRequest, res: Response) => {
-    const channels = db.prepare('SELECT * FROM channels WHERE user_id = ? ORDER BY created_at DESC')
+router.get('/', async (req: AuthRequest, res: Response) => {
+    const channels = await db.prepare('SELECT * FROM channels WHERE user_id = $1 ORDER BY created_at DESC')
         .all(req.userId) as any[];
 
     return res.json({
@@ -67,8 +67,8 @@ router.get('/', (req: AuthRequest, res: Response) => {
 });
 
 // GET /api/channels/:id
-router.get('/:id', (req: AuthRequest, res: Response) => {
-    const channel = db.prepare('SELECT * FROM channels WHERE id = ? AND user_id = ?')
+router.get('/:id', async (req: AuthRequest, res: Response) => {
+    const channel = await db.prepare('SELECT * FROM channels WHERE id = $1 AND user_id = $2')
         .get(req.params.id, req.userId) as any;
 
     if (!channel) {
@@ -79,14 +79,14 @@ router.get('/:id', (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/channels
-router.post('/', (req: AuthRequest, res: Response) => {
+router.post('/', async (req: AuthRequest, res: Response) => {
     try {
         const data = createChannelSchema.parse(req.body);
         const id = 'ch-' + Date.now();
 
-        db.prepare(`
+        await db.prepare(`
       INSERT INTO channels (id, type, name, status, token, webhook, guild_id, channel_id, phone_number, connected_at, user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     `).run(
             id,
             data.type,
@@ -101,7 +101,7 @@ router.post('/', (req: AuthRequest, res: Response) => {
             req.userId
         );
 
-        const channel = db.prepare('SELECT * FROM channels WHERE id = ?').get(id);
+        const channel = await db.prepare('SELECT * FROM channels WHERE id = $1').get(id);
 
         return res.status(201).json({
             success: true,
@@ -117,11 +117,11 @@ router.post('/', (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/channels/:id
-router.put('/:id', (req: AuthRequest, res: Response) => {
+router.put('/:id', async (req: AuthRequest, res: Response) => {
     try {
         const data = updateChannelSchema.parse(req.body);
 
-        const existing = db.prepare('SELECT * FROM channels WHERE id = ? AND user_id = ?')
+        const existing = await db.prepare('SELECT * FROM channels WHERE id = $1 AND user_id = $2')
             .get(req.params.id, req.userId);
 
         if (!existing) {
@@ -130,19 +130,22 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
 
         const updates: string[] = [];
         const values: any[] = [];
+        let paramIndex = 1;
 
-        if (data.name !== undefined) { updates.push('name = ?'); values.push(data.name); }
-        if (data.token !== undefined) { updates.push('token = ?'); values.push(data.token); }
-        if (data.webhook !== undefined) { updates.push('webhook = ?'); values.push(data.webhook); }
-        if (data.status !== undefined) { updates.push('status = ?'); values.push(data.status); }
+        if (data.name !== undefined) { updates.push(`name = $${paramIndex++}`); values.push(data.name); }
+        if (data.token !== undefined) { updates.push(`token = $${paramIndex++}`); values.push(data.token); }
+        if (data.webhook !== undefined) { updates.push(`webhook = $${paramIndex++}`); values.push(data.webhook); }
+        if (data.status !== undefined) { updates.push(`status = $${paramIndex++}`); values.push(data.status); }
 
-        updates.push('updated_at = ?');
+        updates.push(`updated_at = $${paramIndex++}`);
         values.push(new Date().toISOString());
+
+        // Add ID parameter for WHERE clause
         values.push(req.params.id);
 
-        db.prepare(`UPDATE channels SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+        await db.prepare(`UPDATE channels SET ${updates.join(', ')} WHERE id = $${paramIndex}`).run(...values);
 
-        const channel = db.prepare('SELECT * FROM channels WHERE id = ?').get(req.params.id);
+        const channel = await db.prepare('SELECT * FROM channels WHERE id = $1').get(req.params.id);
 
         return res.json({
             success: true,
@@ -158,32 +161,32 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
 });
 
 // DELETE /api/channels/:id
-router.delete('/:id', (req: AuthRequest, res: Response) => {
-    const existing = db.prepare('SELECT id FROM channels WHERE id = ? AND user_id = ?')
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
+    const existing = await db.prepare('SELECT id FROM channels WHERE id = $1 AND user_id = $2')
         .get(req.params.id, req.userId);
 
     if (!existing) {
         return res.status(404).json({ success: false, error: 'Channel not found' });
     }
 
-    db.prepare('DELETE FROM channels WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM channels WHERE id = $1').run(req.params.id);
 
     return res.json({ success: true, message: 'Channel disconnected successfully' });
 });
 
 // POST /api/channels/:id/reconnect
-router.post('/:id/reconnect', (req: AuthRequest, res: Response) => {
-    const existing = db.prepare('SELECT id FROM channels WHERE id = ? AND user_id = ?')
+router.post('/:id/reconnect', async (req: AuthRequest, res: Response) => {
+    const existing = await db.prepare('SELECT id FROM channels WHERE id = $1 AND user_id = $2')
         .get(req.params.id, req.userId);
 
     if (!existing) {
         return res.status(404).json({ success: false, error: 'Channel not found' });
     }
 
-    db.prepare('UPDATE channels SET status = ?, connected_at = ?, updated_at = ? WHERE id = ?')
+    await db.prepare('UPDATE channels SET status = $1, connected_at = $2, updated_at = $3 WHERE id = $4')
         .run('connected', new Date().toISOString(), new Date().toISOString(), req.params.id);
 
-    const channel = db.prepare('SELECT * FROM channels WHERE id = ?').get(req.params.id);
+    const channel = await db.prepare('SELECT * FROM channels WHERE id = $1').get(req.params.id);
 
     return res.json({
         success: true,

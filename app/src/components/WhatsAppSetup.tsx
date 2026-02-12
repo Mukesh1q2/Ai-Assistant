@@ -79,7 +79,7 @@ export default function WhatsAppSetup({ isOpen, onClose, onSuccess }: WhatsAppSe
                 accessToken: accessToken.trim(),
                 businessAccountId: businessAccountId.trim() || undefined,
                 verifyToken: verifyToken.trim() || undefined,
-            });
+            }) as any;
 
             if (response.success && response.integration) {
                 setIntegration(response.integration);
@@ -417,8 +417,8 @@ export default function WhatsAppSetup({ isOpen, onClose, onSuccess }: WhatsAppSe
                         <div key={step.id} className="flex items-center">
                             <div
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${currentStep >= step.id
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted text-muted-foreground'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted text-muted-foreground'
                                     }`}
                             >
                                 {currentStep > step.id ? (

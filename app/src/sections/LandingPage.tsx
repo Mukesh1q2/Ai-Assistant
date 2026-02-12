@@ -228,13 +228,65 @@ export default function LandingPage() {
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
   const { theme, toggleTheme } = useThemeStore();
 
+  const [currency, setCurrency] = useState('USD');
+  const [countryCode, setCountryCode] = useState('US');
+
   useEffect(() => {
+    const fetchLocation = async () => {
+      try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        if (data.country_code === 'IN') {
+          setCurrency('INR');
+          setCountryCode('IN');
+        } else if (['GB', 'UK'].includes(data.country_code)) {
+          setCurrency('GBP');
+          setCountryCode('GB');
+        } else if (['EU', 'DE', 'FR', 'IT', 'ES', 'NL'].includes(data.country_code)) {
+          setCurrency('EUR');
+          setCountryCode('EU');
+        }
+      } catch (error) {
+        console.error('Failed to fetch location:', error);
+      }
+    };
+
+    fetchLocation();
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const getPrice = (usdPrice: number, planName: string) => {
+    if (countryCode === 'IN') {
+      if (planName === 'Pro') return '₹199';
+      if (planName === 'Family') return '₹599';
+      return '₹0';
+    }
+
+    if (currency === 'GBP') {
+      return `£${Math.round(usdPrice * 0.79)}`;
+    }
+
+    if (currency === 'EUR') {
+      return `€${Math.round(usdPrice * 0.92)}`;
+    }
+
+    return `$${usdPrice}`;
+  };
+
+  // Dynamic pricing plans based on location
+  const dynamicPricingPlans = pricingPlans.map(plan => {
+    let price = plan.price;
+    if (plan.price !== '$0' && plan.price !== 'Contact') {
+      const numericPrice = parseInt(plan.price.replace('$', ''));
+      price = getPrice(numericPrice, plan.name);
+    }
+    return { ...plan, price };
+  });
 
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
@@ -410,7 +462,10 @@ export default function LandingPage() {
             {/* Headline */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-6 leading-tight text-foreground">
               Deploy AI Assistants in{' '}
-              <span className="bg-gradient-to-r from-[#4F8CFF] to-[#7C5CFF] bg-clip-text text-transparent">Under 2 Minutes</span>
+              <br className="hidden sm:block" />
+              <span className="bg-gradient-to-r from-[#4F8CFF] to-[#7C5CFF] bg-clip-text text-transparent">
+                Under 2 Minutes
+              </span>
             </h1>
 
             {/* Subheadline */}
@@ -717,7 +772,7 @@ export default function LandingPage() {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {pricingPlans.map((plan, index) => (
+            {dynamicPricingPlans.map((plan, index) => (
               <motion.div
                 key={plan.name}
                 initial={{ opacity: 0, y: 20 }}
