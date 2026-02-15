@@ -132,9 +132,15 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📡 API available at http://localhost:${PORT}/api`);
-});
+if (process.env.VERCEL) {
+    // Export for Vercel configuration
+    module.exports = app;
+} else {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running on http://localhost:${PORT}`);
+        console.log(`📡 API available at http://localhost:${PORT}/api`);
+    });
+}
 
 export { db };
+export default app;
