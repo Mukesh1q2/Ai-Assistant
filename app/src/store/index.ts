@@ -13,9 +13,7 @@ import type {
   OnboardingState
 } from '@/types';
 import {
-  demoBots,
   demoTaskPacks,
-  demoChannels,
   demoFamilyMembers,
   demoActivities
 } from '@/data/bots';

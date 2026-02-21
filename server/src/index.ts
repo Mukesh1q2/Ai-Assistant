@@ -8,7 +8,7 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { db } from './db';
+import { prisma } from './db';
 import authRoutes from './routes/auth';
 import botRoutes from './routes/bots';
 import channelRoutes from './routes/channels';
@@ -16,6 +16,7 @@ import platformRoutes from './routes/platforms';
 import settingsRoutes from './routes/settings';
 import analyticsRoutes from './routes/analytics';
 import { authMiddleware } from './middleware/auth';
+import './queue/worker';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -53,20 +54,27 @@ app.post('/api/seed', async (req, res) => {
             return res.status(403).json({ success: false, error: 'Unauthorized' });
         }
 
-        const existing = await db.prepare('SELECT id FROM users WHERE email = $1').get('demo@clawd.ai');
+        const existing = await prisma.user.findUnique({
+            where: { email: 'demo@clawd.ai' },
+            select: { id: true }
+        });
 
         if (existing) {
             return res.json({ success: true, message: 'Demo account already exists' });
         }
 
         const hashedPassword = await bcrypt.hash('demo123', 10);
-        const id = 'user-' + Date.now();
 
-        await db.prepare(`
-      INSERT INTO users (id, email, password, name, avatar, plan_tier, execution_quota)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `).run(id, 'demo@clawd.ai', hashedPassword, 'Demo User',
-            'https://api.dicebear.com/7.x/avataaars/svg?seed=demo', 'pro', 5000);
+        const user = await prisma.user.create({
+            data: {
+                email: 'demo@clawd.ai',
+                password: hashedPassword,
+                name: 'Demo User',
+                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
+                planTier: 'pro',
+                executionQuota: 5000,
+            }
+        });
 
         // Create sample bots
         const bots = [
@@ -75,29 +83,38 @@ app.post('/api/seed', async (req, res) => {
             { name: 'Chores Manager', desc: 'Tracks household tasks', type: 'chores', status: 'inactive' },
         ];
 
-        // We can't prepare once and run multiple times in parallel with basic pg usually without a transaction or repeated calls.
-        // But our db adapter wrapper just calls pool.query.
-        // So we can just await in loop.
-
         for (const bot of bots) {
-            await db.prepare(`
-              INSERT INTO bots (id, name, description, type, status, user_id)
-              VALUES ($1, $2, $3, $4, $5, $6)
-            `).run('bot-' + Date.now() + Math.random(), bot.name, bot.desc, bot.type, bot.status, id);
+            await prisma.bot.create({
+                data: {
+                    name: bot.name,
+                    description: bot.desc,
+                    type: bot.type,
+                    status: bot.status,
+                    userId: user.id
+                }
+            });
         }
 
         // Create sample channels
-        const channel1Id = 'ch-' + Date.now() + '1';
-        await db.prepare(`
-            INSERT INTO channels (id, type, name, status, connected_at, user_id)
-            VALUES ($1, $2, $3, $4, $5, $6)
-        `).run(channel1Id, 'telegram', 'Family Group', 'connected', new Date().toISOString(), id);
+        await prisma.channel.create({
+            data: {
+                type: 'telegram',
+                name: 'Family Group',
+                status: 'connected',
+                connectedAt: new Date(),
+                userId: user.id
+            }
+        });
 
-        const channel2Id = 'ch-' + Date.now() + '2';
-        await db.prepare(`
-            INSERT INTO channels (id, type, name, status, connected_at, user_id)
-            VALUES ($1, $2, $3, $4, $5, $6)
-        `).run(channel2Id, 'slack', 'Work Slack', 'connected', new Date().toISOString(), id);
+        await prisma.channel.create({
+            data: {
+                type: 'slack',
+                name: 'Work Slack',
+                status: 'connected',
+                connectedAt: new Date(),
+                userId: user.id
+            }
+        });
 
         return res.json({
             success: true,
@@ -142,5 +159,4 @@ if (process.env.VERCEL) {
     });
 }
 
-export { db };
 export default app;

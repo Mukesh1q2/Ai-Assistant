@@ -1,0 +1,8 @@
+src/components/GlobalErrorBoundary.tsx(1,21): error TS1484: 'ReactNode' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/GlobalErrorBoundary.tsx(1,32): error TS1484: 'ErrorInfo' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/sections/Settings.tsx(29,46): error TS2339: Property 'openai_api_key' does not exist on type 'ApiResponse<any>'.
+src/sections/Settings.tsx(30,46): error TS2339: Property 'gemini_api_key' does not exist on type 'ApiResponse<any>'.
+src/sections/Settings.tsx(31,49): error TS2339: Property 'anthropic_api_key' does not exist on type 'ApiResponse<any>'.
+src/sections/SettingsPanel.tsx(42,36): error TS2339: Property 'openai_api_key' does not exist on type 'ApiResponse<any>'.
+src/sections/SettingsPanel.tsx(43,36): error TS2339: Property 'gemini_api_key' does not exist on type 'ApiResponse<any>'.
+src/sections/SettingsPanel.tsx(44,39): error TS2339: Property 'anthropic_api_key' does not exist on type 'ApiResponse<any>'.

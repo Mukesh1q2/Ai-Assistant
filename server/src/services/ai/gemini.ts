@@ -1,13 +1,13 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { AIProvider, AICompletionOptions } from './types';
 
 export class GeminiProvider implements AIProvider {
     name = 'gemini';
-    private client: GoogleGenerativeAI | null = null;
+    private client: GoogleGenAI | null = null;
 
     constructor(apiKey?: string) {
         if (apiKey) {
-            this.client = new GoogleGenerativeAI(apiKey);
+            this.client = new GoogleGenAI({ apiKey });
         }
     }
 
@@ -15,30 +15,23 @@ export class GeminiProvider implements AIProvider {
         if (!this.client) throw new Error('Gemini API Key not configured');
 
         try {
-            const model = this.client.getGenerativeModel({
-                model: options.model || 'gemini-1.5-pro'
+            const config: any = {
+                temperature: options.temperature || 0.7,
+                maxOutputTokens: options.maxTokens || 1000,
+            };
+
+            // Use native system instructions
+            if (options.systemPrompt) {
+                config.systemInstruction = options.systemPrompt;
+            }
+
+            const response = await this.client.models.generateContent({
+                model: options.model || 'gemini-3.0-flash',
+                contents: prompt,
+                config
             });
 
-            const chat = model.startChat({
-                history: [
-                    {
-                        role: 'user',
-                        parts: [{ text: `System Instruction: ${options.systemPrompt || 'You are a helpful AI assistant.'}` }],
-                    },
-                    {
-                        role: 'model',
-                        parts: [{ text: 'Understood. I will follow that instruction.' }],
-                    }
-                ],
-                generationConfig: {
-                    maxOutputTokens: options.maxTokens || 1000,
-                    temperature: options.temperature || 0.7,
-                },
-            });
-
-            const result = await chat.sendMessage(prompt);
-            const response = await result.response;
-            return response.text();
+            return response.text || '';
         } catch (error: any) {
             console.error('Gemini Error:', error);
             throw new Error(`Gemini Error: ${error.message}`);
@@ -47,9 +40,11 @@ export class GeminiProvider implements AIProvider {
 
     async validateKey(apiKey: string): Promise<boolean> {
         try {
-            const testClient = new GoogleGenerativeAI(apiKey);
-            const model = testClient.getGenerativeModel({ model: 'gemini-pro' });
-            await model.generateContent('test');
+            const testClient = new GoogleGenAI({ apiKey });
+            await testClient.models.generateContent({
+                model: 'gemini-3.0-flash',
+                contents: 'test'
+            });
             return true;
         } catch (error) {
             return false;

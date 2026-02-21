@@ -23,12 +23,13 @@ export default function Settings() {
 
     const fetchSettings = async () => {
         try {
-            const response = await api.getSettings();
-            if (response) {
+            const resp: any = await api.getSettings();
+            const data = resp.data || resp;
+            if (data) {
                 setKeys({
-                    openai_api_key: response.openai_api_key || '',
-                    gemini_api_key: response.gemini_api_key || '',
-                    anthropic_api_key: response.anthropic_api_key || '',
+                    openai_api_key: data.openai_api_key || '',
+                    gemini_api_key: data.gemini_api_key || '',
+                    anthropic_api_key: data.anthropic_api_key || '',
                 });
             }
         } catch (error) {

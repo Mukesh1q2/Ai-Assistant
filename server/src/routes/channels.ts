@@ -1,11 +1,11 @@
 /**
  * Channel Routes
- * Uses better-sqlite3 for Node 24 compatibility
+ * Refactored to use native PostgreSQL + Prisma ORM
  */
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { db } from '../db';
+import { prisma } from '../db';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -41,67 +41,75 @@ function formatChannel(channel: any) {
         config: {
             token: channel.token,
             webhook: channel.webhook,
-            guildId: channel.guild_id,
-            channelId: channel.channel_id,
-            phoneNumber: channel.phone_number,
+            guildId: channel.guildId,
+            channelId: channel.channelId,
+            phoneNumber: channel.phoneNumber,
         },
-        connectedAt: channel.connected_at,
+        connectedAt: channel.connectedAt,
     };
 }
 
 // GET /api/channels
 router.get('/', async (req: AuthRequest, res: Response) => {
-    const channels = await db.prepare('SELECT * FROM channels WHERE user_id = $1 ORDER BY created_at DESC')
-        .all(req.userId) as any[];
+    try {
+        const channels = await prisma.channel.findMany({
+            where: { userId: req.userId as string },
+            orderBy: { createdAt: 'desc' },
+        });
 
-    return res.json({
-        success: true,
-        data: {
-            data: channels.map(formatChannel),
-            total: channels.length,
-            page: 1,
-            pageSize: channels.length,
-            hasMore: false,
-        },
-    });
+        return res.json({
+            success: true,
+            data: {
+                data: channels.map(formatChannel),
+                total: channels.length,
+                page: 1,
+                pageSize: channels.length,
+                hasMore: false,
+            },
+        });
+    } catch (error) {
+        console.error('Error fetching channels:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
 });
 
 // GET /api/channels/:id
 router.get('/:id', async (req: AuthRequest, res: Response) => {
-    const channel = await db.prepare('SELECT * FROM channels WHERE id = $1 AND user_id = $2')
-        .get(req.params.id, req.userId) as any;
+    try {
+        const channel = await prisma.channel.findUnique({
+            where: { id: req.params.id as string }
+        });
 
-    if (!channel) {
-        return res.status(404).json({ success: false, error: 'Channel not found' });
+        if (!channel || channel.userId !== req.userId as string) {
+            return res.status(404).json({ success: false, error: 'Channel not found' });
+        }
+
+        return res.json({ success: true, data: formatChannel(channel) });
+    } catch (error) {
+        console.error('Error fetching channel:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
-
-    return res.json({ success: true, data: formatChannel(channel) });
 });
 
 // POST /api/channels
 router.post('/', async (req: AuthRequest, res: Response) => {
     try {
         const data = createChannelSchema.parse(req.body);
-        const id = 'ch-' + Date.now();
 
-        await db.prepare(`
-      INSERT INTO channels (id, type, name, status, token, webhook, guild_id, channel_id, phone_number, connected_at, user_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-    `).run(
-            id,
-            data.type,
-            data.name,
-            'connected',
-            data.token || null,
-            data.webhook || null,
-            data.guildId || null,
-            data.channelId || null,
-            data.phoneNumber || null,
-            new Date().toISOString(),
-            req.userId
-        );
-
-        const channel = await db.prepare('SELECT * FROM channels WHERE id = $1').get(id);
+        const channel = await prisma.channel.create({
+            data: {
+                type: data.type,
+                name: data.name,
+                status: 'connected',
+                token: data.token || null,
+                webhook: data.webhook || null,
+                guildId: data.guildId || null,
+                channelId: data.channelId || null,
+                phoneNumber: data.phoneNumber || null,
+                connectedAt: new Date(),
+                userId: req.userId as string,
+            }
+        });
 
         return res.status(201).json({
             success: true,
@@ -110,9 +118,10 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ success: false, error: 'Invalid input' });
+            return res.status(400).json({ success: false, error: 'Invalid input', details: error.errors });
         }
-        throw error;
+        console.error('Channel create error:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -121,78 +130,88 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     try {
         const data = updateChannelSchema.parse(req.body);
 
-        const existing = await db.prepare('SELECT * FROM channels WHERE id = $1 AND user_id = $2')
-            .get(req.params.id, req.userId);
+        const existing = await prisma.channel.findUnique({
+            where: { id: req.params.id as string }
+        });
 
-        if (!existing) {
+        if (!existing || existing.userId !== req.userId as string) {
             return res.status(404).json({ success: false, error: 'Channel not found' });
         }
 
-        const updates: string[] = [];
-        const values: any[] = [];
-        let paramIndex = 1;
-
-        if (data.name !== undefined) { updates.push(`name = $${paramIndex++}`); values.push(data.name); }
-        if (data.token !== undefined) { updates.push(`token = $${paramIndex++}`); values.push(data.token); }
-        if (data.webhook !== undefined) { updates.push(`webhook = $${paramIndex++}`); values.push(data.webhook); }
-        if (data.status !== undefined) { updates.push(`status = $${paramIndex++}`); values.push(data.status); }
-
-        updates.push(`updated_at = $${paramIndex++}`);
-        values.push(new Date().toISOString());
-
-        // Add ID parameter for WHERE clause
-        values.push(req.params.id);
-
-        await db.prepare(`UPDATE channels SET ${updates.join(', ')} WHERE id = $${paramIndex}`).run(...values);
-
-        const channel = await db.prepare('SELECT * FROM channels WHERE id = $1').get(req.params.id);
+        const updatedChannel = await prisma.channel.update({
+            where: { id: req.params.id as string },
+            data: {
+                ...(data.name && { name: data.name }),
+                ...(data.token !== undefined && { token: data.token }),
+                ...(data.webhook !== undefined && { webhook: data.webhook }),
+                ...(data.status && { status: data.status }),
+            }
+        });
 
         return res.json({
             success: true,
-            data: formatChannel(channel),
+            data: formatChannel(updatedChannel),
             message: 'Channel updated successfully',
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ success: false, error: 'Invalid input' });
+            return res.status(400).json({ success: false, error: 'Invalid input', details: error.errors });
         }
-        throw error;
+        console.error('Channel update error:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 // DELETE /api/channels/:id
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
-    const existing = await db.prepare('SELECT id FROM channels WHERE id = $1 AND user_id = $2')
-        .get(req.params.id, req.userId);
+    try {
+        const existing = await prisma.channel.findUnique({
+            where: { id: req.params.id as string }
+        });
 
-    if (!existing) {
-        return res.status(404).json({ success: false, error: 'Channel not found' });
+        if (!existing || existing.userId !== req.userId as string) {
+            return res.status(404).json({ success: false, error: 'Channel not found' });
+        }
+
+        await prisma.channel.delete({
+            where: { id: req.params.id as string }
+        });
+
+        return res.json({ success: true, message: 'Channel disconnected successfully' });
+    } catch (error) {
+        console.error('Channel delete error:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
-
-    await db.prepare('DELETE FROM channels WHERE id = $1').run(req.params.id);
-
-    return res.json({ success: true, message: 'Channel disconnected successfully' });
 });
 
 // POST /api/channels/:id/reconnect
 router.post('/:id/reconnect', async (req: AuthRequest, res: Response) => {
-    const existing = await db.prepare('SELECT id FROM channels WHERE id = $1 AND user_id = $2')
-        .get(req.params.id, req.userId);
+    try {
+        const existing = await prisma.channel.findUnique({
+            where: { id: req.params.id as string }
+        });
 
-    if (!existing) {
-        return res.status(404).json({ success: false, error: 'Channel not found' });
+        if (!existing || existing.userId !== req.userId as string) {
+            return res.status(404).json({ success: false, error: 'Channel not found' });
+        }
+
+        const updatedChannel = await prisma.channel.update({
+            where: { id: req.params.id as string },
+            data: {
+                status: 'connected',
+                connectedAt: new Date(),
+            }
+        });
+
+        return res.json({
+            success: true,
+            data: formatChannel(updatedChannel),
+            message: 'Channel reconnected successfully',
+        });
+    } catch (error) {
+        console.error('Reconnect error:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
-
-    await db.prepare('UPDATE channels SET status = $1, connected_at = $2, updated_at = $3 WHERE id = $4')
-        .run('connected', new Date().toISOString(), new Date().toISOString(), req.params.id);
-
-    const channel = await db.prepare('SELECT * FROM channels WHERE id = $1').get(req.params.id);
-
-    return res.json({
-        success: true,
-        data: formatChannel(channel),
-        message: 'Channel reconnected successfully',
-    });
 });
 
 // GET /api/channels/types/list

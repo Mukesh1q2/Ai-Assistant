@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { db } from '../db';
+import { prisma } from '../db';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { aiService } from '../services/ai';
 
@@ -17,7 +17,8 @@ const updateKeysSchema = z.object({
 // GET /api/settings/keys
 router.get('/keys', async (req: AuthRequest, res: Response) => {
     try {
-        const user = await db.prepare('SELECT openai_api_key, gemini_api_key, anthropic_api_key FROM users WHERE id = $1').get(req.userId) as any;
+        const users: any[] = await prisma.$queryRawUnsafe('SELECT openai_api_key, gemini_api_key, anthropic_api_key FROM users WHERE id = $1', req.userId);
+        const user = users[0];
 
         if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -72,7 +73,7 @@ router.put('/keys', async (req: AuthRequest, res: Response) => {
         if (updates.length === 0) return res.json({ success: true, message: 'No changes' });
 
         values.push(req.userId);
-        await db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`).run(...values);
+        await prisma.$executeRawUnsafe(`UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`, ...values);
 
         res.json({ success: true, message: 'Keys updated successfully' });
     } catch (error) {
