@@ -288,26 +288,7 @@ export interface DemoScenario {
   activities: Activity[];
 }
 
-// API Response Types
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: ApiError;
-  meta?: ApiMeta;
-}
-
-export interface ApiError {
-  code: string;
-  message: string;
-  details?: Record<string, any>;
-}
-
-export interface ApiMeta {
-  page?: number;
-  limit?: number;
-  total?: number;
-  hasMore?: boolean;
-}
+// API types are defined canonically in services/api.ts
 
 // Theme Types
 export type Theme = 'light' | 'dark' | 'system';

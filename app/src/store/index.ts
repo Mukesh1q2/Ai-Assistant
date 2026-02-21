@@ -12,11 +12,6 @@ import type {
   Theme,
   OnboardingState
 } from '@/types';
-import {
-  demoTaskPacks,
-  demoFamilyMembers,
-  demoActivities
-} from '@/data/bots';
 import { authService } from '@/services';
 import { clearAuthToken, api } from '@/services/api';
 
@@ -278,33 +273,28 @@ interface TaskPackState {
 }
 
 export const useTaskPackStore = create<TaskPackState>()(
-  persist(
-    (set) => ({
-      packs: [],
-      fetchPacks: async () => {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 400));
-        set({ packs: demoTaskPacks });
-      },
-      togglePack: (id) => {
-        set((state) => ({
-          packs: state.packs.map(pack =>
-            pack.id === id ? { ...pack, enabled: !pack.enabled } : pack
-          ),
-        }));
-      },
-      updatePack: (id, updates) => {
-        set((state) => ({
-          packs: state.packs.map(pack =>
-            pack.id === id ? { ...pack, ...updates } : pack
-          ),
-        }));
-      },
-    }),
-    {
-      name: 'clawd-packs',
-    }
-  )
+  (set) => ({
+    packs: [],
+    fetchPacks: async () => {
+      // TODO: Connect to real backend endpoint when available
+      // For now, start with empty state
+      set({ packs: [] });
+    },
+    togglePack: (id) => {
+      set((state) => ({
+        packs: state.packs.map(pack =>
+          pack.id === id ? { ...pack, enabled: !pack.enabled } : pack
+        ),
+      }));
+    },
+    updatePack: (id, updates) => {
+      set((state) => ({
+        packs: state.packs.map(pack =>
+          pack.id === id ? { ...pack, ...updates } : pack
+        ),
+      }));
+    },
+  })
 );
 
 // Channel Store
@@ -317,61 +307,53 @@ interface ChannelState {
 }
 
 export const useChannelStore = create<ChannelState>()(
-  persist(
-    (set) => ({
-      channels: [],
-      fetchChannels: async () => {
-        try {
-          const response = await api.getChannels();
-          if (response.success && response.data && Array.isArray(response.data.data)) {
-            set({ channels: response.data.data });
-          }
-        } catch (error) {
-          console.error('Failed to fetch channels:', error);
+  (set) => ({
+    channels: [],
+    fetchChannels: async () => {
+      try {
+        const response = await api.getChannels();
+        if (response.success && response.data && Array.isArray(response.data.data)) {
+          set({ channels: response.data.data });
         }
-      },
-      connectChannel: async (type, config) => {
-        try {
-          const response = await api.connectChannel(type, config);
-          if (response.success && response.data) {
-            set((state) => ({ channels: [...state.channels, response.data] }));
-          }
-        } catch (error) {
-          console.error('Connect channel error:', error);
-          // Optionally throw to let UI handle it
+      } catch (error) {
+        console.error('Failed to fetch channels:', error);
+      }
+    },
+    connectChannel: async (type, config) => {
+      try {
+        const response = await api.connectChannel(type, config);
+        if (response.success && response.data) {
+          set((state) => ({ channels: [...state.channels, response.data] }));
         }
-      },
-      disconnectChannel: async (id) => {
-        // Optimistic
-        set((state) => ({
-          channels: state.channels.map(ch =>
-            ch.id === id ? { ...ch, status: 'disconnected' } : ch
-          ),
-        }));
-        try {
-          await api.disconnectChannel(id);
-        } catch (error) {
-          console.error('Disconnect channel error:', error);
-          // Revert?
-        }
-      },
-      updateChannel: async (id, updates) => {
-        set((state) => ({
-          channels: state.channels.map(ch =>
-            ch.id === id ? { ...ch, ...updates } : ch
-          ),
-        }));
-        try {
-          await api.updateChannel(id, updates);
-        } catch (error) {
-          console.error('Update channel error:', error);
-        }
-      },
-    }),
-    {
-      name: 'clawd-channels',
-    }
-  )
+      } catch (error) {
+        console.error('Connect channel error:', error);
+      }
+    },
+    disconnectChannel: async (id) => {
+      set((state) => ({
+        channels: state.channels.map(ch =>
+          ch.id === id ? { ...ch, status: 'disconnected' } : ch
+        ),
+      }));
+      try {
+        await api.disconnectChannel(id);
+      } catch (error) {
+        console.error('Disconnect channel error:', error);
+      }
+    },
+    updateChannel: async (id, updates) => {
+      set((state) => ({
+        channels: state.channels.map(ch =>
+          ch.id === id ? { ...ch, ...updates } : ch
+        ),
+      }));
+      try {
+        await api.updateChannel(id, updates);
+      } catch (error) {
+        console.error('Update channel error:', error);
+      }
+    },
+  })
 );
 
 // Family Store
@@ -385,54 +367,39 @@ interface FamilyState {
 }
 
 export const useFamilyStore = create<FamilyState>()(
-  persist(
-    (set) => ({
-      family: null,
-      members: [],
-      fetchFamily: async () => {
-        await new Promise(resolve => setTimeout(resolve, 400));
-        set({
-          family: {
-            id: 'family-1',
-            name: 'Johnson Family',
-            ownerId: 'user-1',
-            members: demoFamilyMembers,
-            sharedPacks: ['pack-4', 'pack-5'],
-            createdAt: new Date('2024-01-15'),
-          },
-          members: demoFamilyMembers,
-        });
-      },
-      inviteMember: async (email, role) => {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        const newMember: FamilyMember = {
-          id: `member-${Date.now()}`,
-          userId: `user-${Date.now()}`,
-          name: email.split('@')[0],
-          email,
-          role: role as any,
-          joinedAt: new Date(),
-          permissions: [],
-        };
-        set((state) => ({ members: [...state.members, newMember] }));
-      },
-      removeMember: (id) => {
-        set((state) => ({
-          members: state.members.filter(m => m.id !== id),
-        }));
-      },
-      updateMemberRole: (id, role) => {
-        set((state) => ({
-          members: state.members.map(m =>
-            m.id === id ? { ...m, role: role as any } : m
-          ),
-        }));
-      },
-    }),
-    {
-      name: 'clawd-family',
-    }
-  )
+  (set) => ({
+    family: null,
+    members: [],
+    fetchFamily: async () => {
+      // TODO: Connect to real backend endpoint when available
+      set({ family: null, members: [] });
+    },
+    inviteMember: async (email, role) => {
+      // TODO: Connect to real backend endpoint
+      const newMember: FamilyMember = {
+        id: `member-${Date.now()}`,
+        userId: `user-${Date.now()}`,
+        name: email.split('@')[0],
+        email,
+        role: role as any,
+        joinedAt: new Date(),
+        permissions: [],
+      };
+      set((state) => ({ members: [...state.members, newMember] }));
+    },
+    removeMember: (id) => {
+      set((state) => ({
+        members: state.members.filter(m => m.id !== id),
+      }));
+    },
+    updateMemberRole: (id, role) => {
+      set((state) => ({
+        members: state.members.map(m =>
+          m.id === id ? { ...m, role: role as any } : m
+        ),
+      }));
+    },
+  })
 );
 
 // Activity Store
@@ -443,28 +410,23 @@ interface ActivityState {
 }
 
 export const useActivityStore = create<ActivityState>()(
-  persist(
-    (set) => ({
-      activities: [],
-      fetchActivities: async () => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        set({ activities: demoActivities });
-      },
-      addActivity: (activity) => {
-        const newActivity: Activity = {
-          ...activity,
-          id: `act-${Date.now()}`,
-          createdAt: new Date(),
-        };
-        set((state) => ({
-          activities: [newActivity, ...state.activities],
-        }));
-      },
-    }),
-    {
-      name: 'clawd-activities',
-    }
-  )
+  (set) => ({
+    activities: [],
+    fetchActivities: async () => {
+      // TODO: Connect to real backend endpoint when available
+      set({ activities: [] });
+    },
+    addActivity: (activity) => {
+      const newActivity: Activity = {
+        ...activity,
+        id: `act-${Date.now()}`,
+        createdAt: new Date(),
+      };
+      set((state) => ({
+        activities: [newActivity, ...state.activities],
+      }));
+    },
+  })
 );
 
 // Notification Store
@@ -478,47 +440,42 @@ interface NotificationState {
 }
 
 export const useNotificationStore = create<NotificationState>()(
-  persist(
-    (set) => ({
-      notifications: [],
-      unreadCount: 0,
-      addNotification: (notification) => {
-        const newNotification: Notification = {
-          ...notification,
-          id: `notif-${Date.now()}`,
-          read: false,
-          createdAt: new Date(),
-        };
-        set((state) => ({
-          notifications: [newNotification, ...state.notifications],
-          unreadCount: state.unreadCount + 1,
-        }));
-      },
-      markAsRead: (id) => {
-        set((state) => ({
-          notifications: state.notifications.map(n =>
-            n.id === id ? { ...n, read: true } : n
-          ),
-          unreadCount: Math.max(0, state.unreadCount - 1),
-        }));
-      },
-      markAllAsRead: () => {
-        set((state) => ({
-          notifications: state.notifications.map(n => ({ ...n, read: true })),
-          unreadCount: 0,
-        }));
-      },
-      dismissNotification: (id) => {
-        set((state) => ({
-          notifications: state.notifications.filter(n => n.id !== id),
-          unreadCount: Math.max(0, state.unreadCount - 1),
-        }));
-      },
-    }),
-    {
-      name: 'clawd-notifications',
-    }
-  )
+  (set) => ({
+    notifications: [],
+    unreadCount: 0,
+    addNotification: (notification) => {
+      const newNotification: Notification = {
+        ...notification,
+        id: `notif-${Date.now()}`,
+        read: false,
+        createdAt: new Date(),
+      };
+      set((state) => ({
+        notifications: [newNotification, ...state.notifications],
+        unreadCount: state.unreadCount + 1,
+      }));
+    },
+    markAsRead: (id) => {
+      set((state) => ({
+        notifications: state.notifications.map(n =>
+          n.id === id ? { ...n, read: true } : n
+        ),
+        unreadCount: Math.max(0, state.unreadCount - 1),
+      }));
+    },
+    markAllAsRead: () => {
+      set((state) => ({
+        notifications: state.notifications.map(n => ({ ...n, read: true })),
+        unreadCount: 0,
+      }));
+    },
+    dismissNotification: (id) => {
+      set((state) => ({
+        notifications: state.notifications.filter(n => n.id !== id),
+        unreadCount: Math.max(0, state.unreadCount - 1),
+      }));
+    },
+  })
 );
 
 // Onboarding Store
@@ -535,65 +492,60 @@ interface OnboardingStateStore {
 }
 
 export const useOnboardingStore = create<OnboardingStateStore>()(
-  persist(
-    (set) => ({
-      isOnboarding: false,
-      currentStep: 1,
-      state: {
-        step: 1,
-        selectedPacks: [],
-        selectedChannels: [],
-        channelConfigs: {},
-      },
-      startOnboarding: () => {
-        set({
-          isOnboarding: true,
-          currentStep: 1,
-          state: {
-            step: 1,
-            selectedPacks: [],
-            selectedChannels: [],
-            channelConfigs: {},
-          },
-        });
-      },
-      nextStep: () => {
-        set((state) => ({
-          currentStep: Math.min(state.currentStep + 1, 3),
-          state: { ...state.state, step: Math.min(state.currentStep + 1, 3) },
-        }));
-      },
-      prevStep: () => {
-        set((state) => ({
-          currentStep: Math.max(state.currentStep - 1, 1),
-          state: { ...state.state, step: Math.max(state.currentStep - 1, 1) },
-        }));
-      },
-      updateState: (updates) => {
-        set((state) => ({
-          state: { ...state.state, ...updates },
-        }));
-      },
-      completeOnboarding: () => {
-        set({ isOnboarding: false, currentStep: 1 });
-      },
-      resetOnboarding: () => {
-        set({
-          isOnboarding: false,
-          currentStep: 1,
-          state: {
-            step: 1,
-            selectedPacks: [],
-            selectedChannels: [],
-            channelConfigs: {},
-          },
-        });
-      },
-    }),
-    {
-      name: 'clawd-onboarding',
-    }
-  )
+  (set) => ({
+    isOnboarding: false,
+    currentStep: 1,
+    state: {
+      step: 1,
+      selectedPacks: [],
+      selectedChannels: [],
+      channelConfigs: {},
+    },
+    startOnboarding: () => {
+      set({
+        isOnboarding: true,
+        currentStep: 1,
+        state: {
+          step: 1,
+          selectedPacks: [],
+          selectedChannels: [],
+          channelConfigs: {},
+        },
+      });
+    },
+    nextStep: () => {
+      set((state) => ({
+        currentStep: Math.min(state.currentStep + 1, 3),
+        state: { ...state.state, step: Math.min(state.currentStep + 1, 3) },
+      }));
+    },
+    prevStep: () => {
+      set((state) => ({
+        currentStep: Math.max(state.currentStep - 1, 1),
+        state: { ...state.state, step: Math.max(state.currentStep - 1, 1) },
+      }));
+    },
+    updateState: (updates) => {
+      set((state) => ({
+        state: { ...state.state, ...updates },
+      }));
+    },
+    completeOnboarding: () => {
+      set({ isOnboarding: false, currentStep: 1 });
+    },
+    resetOnboarding: () => {
+      set({
+        isOnboarding: false,
+        currentStep: 1,
+        state: {
+          step: 1,
+          selectedPacks: [],
+          selectedChannels: [],
+          channelConfigs: {},
+        },
+      });
+    },
+  })
 );
 
 // UI Store

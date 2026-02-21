@@ -53,17 +53,24 @@ import ApprovalWorkflow from '@/components/ApprovalWorkflow';
 import HelpDocumentation from '@/components/HelpDocumentation';
 import ExecutionLogs from '@/components/ExecutionLogs';
 
-const navItems = [
+const navItems: { id: string; label: string; icon: any; badge?: number }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'bots', label: 'Bots', icon: Bot },
   { id: 'packs', label: 'Task Packs', icon: Package },
   { id: 'channels', label: 'Channels', icon: MessageSquare },
   { id: 'family', label: 'Family', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'approvals', label: 'Approvals', icon: Shield, badge: 3 },
+  { id: 'approvals', label: 'Approvals', icon: Shield },
   { id: 'activity', label: 'Activity', icon: Activity },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -155,7 +162,7 @@ export default function Dashboard() {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">
-              {`Good evening, ${user?.name || 'User'}`}
+              {`${getGreeting()}, ${user?.name || 'User'}`}
             </h1>
             <p className="text-white/70 max-w-xl">
               Your AI assistants are running smoothly. Here is what is happening today.

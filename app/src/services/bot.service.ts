@@ -14,6 +14,10 @@ export interface CreateBotData {
     avatar?: string;
     personality?: string;
     memoryScope?: 'user' | 'family' | 'global';
+    modelProvider?: string;
+    modelName?: string;
+    systemPrompt?: string;
+    temperature?: number;
 }
 
 export interface UpdateBotData {
@@ -23,6 +27,10 @@ export interface UpdateBotData {
     status?: Bot['status'];
     personality?: string;
     memoryScope?: 'user' | 'family' | 'global';
+    modelProvider?: string;
+    modelName?: string;
+    systemPrompt?: string;
+    temperature?: number;
 }
 
 export interface BotFilters {

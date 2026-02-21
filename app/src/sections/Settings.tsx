@@ -173,7 +173,7 @@ export default function Settings() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-sm text-muted-foreground">
-                            Your keys are encrypted at rest. We never share them with third parties.
+                            Your keys are stored securely on the server and are never exposed to the frontend after saving.
                             They are only used to communicate directly with the AI providers for your bots.
                         </p>
                     </CardContent>

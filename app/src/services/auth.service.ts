@@ -82,8 +82,8 @@ class AuthService {
     /**
      * Seed demo account (for initial setup)
      */
-    async seedDemoAccount(): Promise<ApiResponse<{ credentials: { email: string; password: string } }>> {
-        return api.post('/seed');
+    async seedDemoAccount(adminKey?: string): Promise<ApiResponse<{ credentials: { email: string; password: string } }>> {
+        return api.post('/seed', { adminKey });
     }
 }
 
