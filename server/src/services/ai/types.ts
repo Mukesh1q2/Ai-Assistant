@@ -5,6 +5,7 @@ export interface AICompletionOptions {
     systemPrompt?: string;
     userId: string;
     botId?: string;
+    history?: { role: string; content: string }[];
 }
 
 export interface AIProvider {

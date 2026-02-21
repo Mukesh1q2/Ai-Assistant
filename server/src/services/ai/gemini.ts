@@ -20,14 +20,27 @@ export class GeminiProvider implements AIProvider {
                 maxOutputTokens: options.maxTokens || 1000,
             };
 
-            // Use native system instructions
             if (options.systemPrompt) {
                 config.systemInstruction = options.systemPrompt;
             }
 
+            // Build contents with conversation history for multi-turn
+            let contents: any;
+            if (options.history && options.history.length > 0) {
+                contents = [
+                    ...options.history.map(msg => ({
+                        role: msg.role === 'assistant' ? 'model' : 'user',
+                        parts: [{ text: msg.content }],
+                    })),
+                    { role: 'user', parts: [{ text: prompt }] },
+                ];
+            } else {
+                contents = prompt;
+            }
+
             const response = await this.client.models.generateContent({
-                model: options.model || 'gemini-3.0-flash',
-                contents: prompt,
+                model: options.model || 'gemini-2.0-flash',
+                contents,
                 config
             });
 
@@ -40,11 +53,9 @@ export class GeminiProvider implements AIProvider {
 
     async validateKey(apiKey: string): Promise<boolean> {
         try {
+            // Use models.list() instead of generateContent to avoid billable API calls
             const testClient = new GoogleGenAI({ apiKey });
-            await testClient.models.generateContent({
-                model: 'gemini-3.0-flash',
-                contents: 'test'
-            });
+            await testClient.models.list();
             return true;
         } catch (error) {
             return false;

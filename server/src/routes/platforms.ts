@@ -226,7 +226,7 @@ router.post('/whatsapp/setup', authMiddleware, async (req: AuthRequest, res: Res
         name: integration.name,
         phoneNumber: integration.whatsappDisplayNumber,
         verifyToken: integration.whatsappVerifyToken,
-        webhookUrl: `/ api / platforms / whatsapp / webhook / ${integration.id}`,
+        webhookUrl: `/api/platforms/whatsapp/webhook/${integration.id}`,
         status: 'connected'
       }
     });

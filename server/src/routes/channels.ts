@@ -49,6 +49,14 @@ function formatChannel(channel: any) {
     };
 }
 
+// GET /api/channels/types/list — MUST be before /:id to avoid matching 'types' as a channel ID
+router.get('/types/list', (_req: AuthRequest, res: Response) => {
+    return res.json({
+        success: true,
+        data: ['telegram', 'discord', 'slack', 'whatsapp', 'email'],
+    });
+});
+
 // GET /api/channels
 router.get('/', async (req: AuthRequest, res: Response) => {
     try {
@@ -212,14 +220,6 @@ router.post('/:id/reconnect', async (req: AuthRequest, res: Response) => {
         console.error('Reconnect error:', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
-});
-
-// GET /api/channels/types/list
-router.get('/types/list', (_req: AuthRequest, res: Response) => {
-    return res.json({
-        success: true,
-        data: ['telegram', 'discord', 'slack', 'whatsapp', 'email'],
-    });
 });
 
 export default router;

@@ -15,12 +15,27 @@ export class OpenAIProvider implements AIProvider {
         if (!this.client) throw new Error('OpenAI API Key not configured');
 
         try {
+            // Build messages array with conversation history
+            const messages: OpenAI.ChatCompletionMessageParam[] = [
+                { role: 'system', content: options.systemPrompt || 'You are a helpful AI assistant.' },
+            ];
+
+            // Append conversation history for multi-turn context
+            if (options.history && options.history.length > 0) {
+                for (const msg of options.history) {
+                    messages.push({
+                        role: msg.role as 'user' | 'assistant',
+                        content: msg.content,
+                    });
+                }
+            }
+
+            // Append the current user prompt
+            messages.push({ role: 'user', content: prompt });
+
             const completion = await this.client.chat.completions.create({
                 model: options.model || 'gpt-4o',
-                messages: [
-                    { role: 'system', content: options.systemPrompt || 'You are a helpful AI assistant.' },
-                    { role: 'user', content: prompt }
-                ],
+                messages,
                 temperature: options.temperature || 0.7,
                 max_tokens: options.maxTokens || 1000,
                 user: options.userId

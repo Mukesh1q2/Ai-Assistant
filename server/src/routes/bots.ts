@@ -40,6 +40,15 @@ const updateBotSchema = z.object({
     temperature: z.number().optional(),
 });
 
+// Safe JSON parse helper
+function safeJsonParse(str: string | null | undefined, fallback: any = []) {
+    try {
+        return JSON.parse(str || JSON.stringify(fallback));
+    } catch {
+        return fallback;
+    }
+}
+
 // Helper to format bot response
 function formatBot(bot: any) {
     return {
@@ -52,7 +61,7 @@ function formatBot(bot: any) {
         createdAt: bot.createdAt,
         updatedAt: bot.updatedAt,
         channels: [],
-        taskPacks: JSON.parse(bot.taskPacks || '[]'),
+        taskPacks: safeJsonParse(bot.taskPacks),
         metrics: {
             totalExecutions: bot.totalExecutions,
             successfulExecutions: bot.successfulExecutions,
@@ -63,11 +72,10 @@ function formatBot(bot: any) {
         config: {
             personality: bot.personality,
             memoryScope: bot.memoryScope,
-            // Removed from schema natively, can add back to Schema if needed
-            // systemPrompt: bot.systemPrompt,
-            // modelProvider: bot.modelProvider,
-            // modelName: bot.modelName,
-            // temperature: bot.temperature,
+            systemPrompt: bot.systemPrompt,
+            modelProvider: bot.modelProvider,
+            modelName: bot.modelName,
+            temperature: bot.temperature,
             guardrails: [],
             permissions: [],
         },
@@ -141,6 +149,10 @@ router.post('/', async (req: AuthRequest, res: Response) => {
                 avatar: data.avatar || '/bots/default.png',
                 personality: data.personality || 'friendly and helpful',
                 memoryScope: data.memoryScope || 'user',
+                systemPrompt: data.systemPrompt,
+                modelProvider: data.modelProvider || 'openai',
+                modelName: data.modelName || 'gpt-4o',
+                temperature: data.temperature ?? 0.7,
                 userId: req.userId as string,
             }
         });
@@ -181,6 +193,10 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
                 ...(data.status && { status: data.status }),
                 ...(data.personality && { personality: data.personality }),
                 ...(data.memoryScope && { memoryScope: data.memoryScope }),
+                ...(data.systemPrompt !== undefined && { systemPrompt: data.systemPrompt }),
+                ...(data.modelProvider && { modelProvider: data.modelProvider }),
+                ...(data.modelName && { modelName: data.modelName }),
+                ...(data.temperature !== undefined && { temperature: data.temperature }),
             }
         });
 

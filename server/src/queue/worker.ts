@@ -100,7 +100,8 @@ export const messageWorker = new Worker(
                     integration.userId,
                     activeBot.id,
                     text,
-                    integration.id
+                    integration.id,
+                    chatId
                 );
             } catch (err: any) {
                 console.error('[Worker] AI Processing Error:', err);

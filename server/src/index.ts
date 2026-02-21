@@ -1,6 +1,6 @@
 /**
  * Clawd Bot Backend Server
- * Express.js with better-sqlite3 (Node 24 compatible)
+ * Express.js + Prisma + BullMQ
  */
 
 import express from 'express';
@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { prisma } from './db';
+import { config } from './config';
 import authRoutes from './routes/auth';
 import botRoutes from './routes/bots';
 import channelRoutes from './routes/channels';
@@ -19,26 +20,27 @@ import { authMiddleware } from './middleware/auth';
 import './queue/worker';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = config.PORT;
 
 // Security Middleware
 app.use(helmet());
 
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    windowMs: 15 * 60 * 1000,
+    limit: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 app.use(limiter);
 
-// CORS
-const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : ['http://localhost:5173', 'http://localhost:3000'];
+// CORS — uses validated config
 app.use(cors({
-    origin: allowedOrigins,
+    origin: config.CLIENT_URL,
     credentials: true,
 }));
-app.use(express.json());
+
+// Body parser with explicit size limit
+app.use(express.json({ limit: '1mb' }));
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -48,9 +50,8 @@ app.get('/api/health', (_req, res) => {
 // Seed endpoint - creates demo account if not exists
 app.post('/api/seed', async (req, res) => {
     try {
-        // Check for Admin Key
         const adminKey = req.body.adminKey || req.headers['x-admin-key'];
-        if (process.env.NODE_ENV === 'production' && (!process.env.ADMIN_KEY || adminKey !== process.env.ADMIN_KEY)) {
+        if (!config.ADMIN_KEY || adminKey !== config.ADMIN_KEY) {
             return res.status(403).json({ success: false, error: 'Unauthorized' });
         }
 
@@ -95,31 +96,9 @@ app.post('/api/seed', async (req, res) => {
             });
         }
 
-        // Create sample channels
-        await prisma.channel.create({
-            data: {
-                type: 'telegram',
-                name: 'Family Group',
-                status: 'connected',
-                connectedAt: new Date(),
-                userId: user.id
-            }
-        });
-
-        await prisma.channel.create({
-            data: {
-                type: 'slack',
-                name: 'Work Slack',
-                status: 'connected',
-                connectedAt: new Date(),
-                userId: user.id
-            }
-        });
-
         return res.json({
             success: true,
             message: 'Demo account created',
-            credentials: { email: 'demo@clawd.ai', password: 'demo123' },
         });
     } catch (error) {
         console.error('Seed error:', error);
@@ -134,29 +113,41 @@ app.use('/api/channels', authMiddleware, channelRoutes);
 app.use('/api/settings', authMiddleware, settingsRoutes);
 app.use('/api/analytics', authMiddleware, analyticsRoutes);
 
-// Platform routes - webhooks are public, setup requires auth
-app.use('/api/platforms/telegram/webhook', platformRoutes);
-app.use('/api/platforms/whatsapp/webhook', platformRoutes);
-app.use('/api/platforms', authMiddleware, platformRoutes);
+// Platform routes — single mount point, webhooks handle their own auth
+app.use('/api/platforms', platformRoutes);
 
-// Error handler
+// Error handler — sanitize errors in production
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error('Error:', err);
-    res.status(500).json({
-        success: false,
-        error: err.message || 'Internal server error',
-    });
+    const message = config.NODE_ENV === 'production'
+        ? 'Internal server error'
+        : err.message || 'Internal server error';
+    res.status(500).json({ success: false, error: message });
 });
 
 // Start server
 if (process.env.VERCEL) {
-    // Export for Vercel configuration
     module.exports = app;
 } else {
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
         console.log(`🚀 Server running on http://localhost:${PORT}`);
         console.log(`📡 API available at http://localhost:${PORT}/api`);
     });
+
+    // Graceful shutdown
+    const shutdown = async (signal: string) => {
+        console.log(`\n${signal} received. Shutting down gracefully...`);
+        server.close(async () => {
+            await prisma.$disconnect();
+            console.log('✅ Server closed');
+            process.exit(0);
+        });
+        // Force exit after 10s
+        setTimeout(() => process.exit(1), 10000);
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 export default app;

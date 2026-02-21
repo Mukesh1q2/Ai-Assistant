@@ -19,18 +19,72 @@ export class AIService {
   getProvider(name: string): AIProvider {
     const provider = this.providers.get(name);
     if (!provider) {
-      // Fallback to openai if configured, else throw
-      if (this.providers.has('openai')) return this.providers.get('openai')!;
-      throw new Error(`Provider ${name} not configured`);
+      throw new Error(`AI provider "${name}" not configured. Please set the appropriate API key.`);
     }
     return provider;
+  }
+
+  /**
+   * Load a user's per-user API key and create a temporary provider instance
+   */
+  private async getProviderForUser(userId: string, providerName: string): Promise<AIProvider> {
+    // First check if a server-level provider exists
+    if (this.providers.has(providerName)) {
+      return this.providers.get(providerName)!;
+    }
+
+    // Otherwise, try to load from the user's stored keys
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { openaiApiKey: true, geminiApiKey: true, anthropicApiKey: true }
+    });
+
+    if (!user) throw new Error('User not found');
+
+    if (providerName === 'openai' && user.openaiApiKey) {
+      return new OpenAIProvider(user.openaiApiKey);
+    }
+    if (providerName === 'gemini' && user.geminiApiKey) {
+      return new GeminiProvider(user.geminiApiKey);
+    }
+
+    throw new Error(`AI provider "${providerName}" not configured. Please add your API key in Settings.`);
+  }
+
+  /**
+   * Fetch recent conversation history for context
+   */
+  private async getConversationHistory(integrationId: string, chatId: string, limit: number = 10): Promise<{ role: string; content: string }[]> {
+    if (!integrationId) return [];
+
+    try {
+      const messages = await prisma.message.findMany({
+        where: {
+          integrationId,
+          chatId,
+          messageText: { not: null },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        select: { direction: true, messageText: true }
+      });
+
+      // Reverse to chronological order and map to chat format
+      return messages.reverse().map(m => ({
+        role: m.direction === 'incoming' ? 'user' : 'assistant',
+        content: m.messageText || '',
+      }));
+    } catch {
+      return [];
+    }
   }
 
   async generateResponse(
     userId: string,
     botId: string,
     prompt: string,
-    integrationId?: string
+    integrationId?: string,
+    chatId?: string
   ): Promise<string> {
     // Fetch bot config
     const bot = await prisma.bot.findUnique({
@@ -39,15 +93,16 @@ export class AIService {
 
     if (!bot) throw new Error('Bot not found');
 
-    let providerName = 'openai';
-    let modelName = 'gpt-3.5-turbo';
+    // Use explicit modelProvider from bot config — no fragile string matching
+    const providerName = bot.modelProvider || 'openai';
+    const modelName = bot.modelName || 'gpt-4o';
 
-    if (bot.personality?.toLowerCase().includes('gemini') || bot.type === 'gemini') {
-      providerName = 'gemini';
-      modelName = 'gemini-3.0-flash';
-    }
+    const provider = await this.getProviderForUser(userId, providerName);
 
-    const provider = this.getProvider(providerName);
+    // Build conversation history
+    const history = integrationId && chatId
+      ? await this.getConversationHistory(integrationId, chatId)
+      : [];
 
     const startTime = Date.now();
     let status = 'success';
@@ -55,23 +110,23 @@ export class AIService {
     let response = '';
 
     try {
-      console.log(`🤖 AI: Generating response for bot ${bot.name} using ${providerName} (${modelName})`);
+      console.log(`🤖 AI: Generating response for bot "${bot.name}" using ${providerName}/${modelName}`);
       response = await provider.generateResponse(prompt, {
         userId,
         botId,
         model: modelName,
-        temperature: 0.7,
-        systemPrompt: bot.personality || '',
+        temperature: bot.temperature ?? 0.7,
+        systemPrompt: bot.systemPrompt || bot.personality || '',
+        history,
       });
       return response;
     } catch (error: any) {
-      status = 'failed';
+      status = 'error';
       errorMessage = error.message;
-      console.error('AI Generation Warning:', error.message);
-      return `(System Error: ${error.message})`;
+      console.error('AI Generation Error:', error.message);
+      throw error; // Let caller handle the error
     } finally {
       const duration = Date.now() - startTime;
-      // Async log (fire and forget)
       this.logExecution(botId, userId, integrationId, status, errorMessage, duration);
     }
   }
