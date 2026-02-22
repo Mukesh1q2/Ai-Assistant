@@ -15,9 +15,11 @@
     "dependencies": {
         "@google/genai": "^1.42.0",
         "@prisma/client": "^6.19.2",
+        "@types/cookie-parser": "^1.4.10",
         "axios": "^1.13.5",
         "bcryptjs": "^2.4.3",
         "bullmq": "^5.70.0",
+        "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
         "dotenv": "^17.2.4",
         "express": "^4.21.2",

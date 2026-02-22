@@ -14,16 +14,24 @@ export interface AuthRequest extends Request {
 }
 
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
-    const authHeader = req.headers.authorization;
+    // Try httpOnly cookie first, then Authorization header (backward compat)
+    let token: string | undefined;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (req.cookies?.auth_token) {
+        token = req.cookies.auth_token;
+    } else {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        }
+    }
+
+    if (!token) {
         return res.status(401).json({
             success: false,
             error: 'No token provided',
         });
     }
-
-    const token = authHeader.split(' ')[1];
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };

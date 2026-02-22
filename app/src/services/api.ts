@@ -39,17 +39,17 @@ export class ApiError extends Error {
     }
 }
 
-// Get auth token
+// Auth token helpers — with httpOnly cookies, the browser manages the token.
+// These are kept for backward compatibility but are no longer the primary mechanism.
 function getAuthToken(): string | null {
     return localStorage.getItem('auth_token');
 }
 
-// Set auth token
 export function setAuthToken(token: string): void {
+    // Store as fallback for non-cookie scenarios
     localStorage.setItem('auth_token', token);
 }
 
-// Clear auth token
 export function clearAuthToken(): void {
     localStorage.removeItem('auth_token');
 }
@@ -74,6 +74,7 @@ export async function apiRequest<T>(
     try {
         const response = await fetch(url, {
             ...options,
+            credentials: 'include', // Send httpOnly cookies
             headers: {
                 ...defaultHeaders,
                 ...options.headers,

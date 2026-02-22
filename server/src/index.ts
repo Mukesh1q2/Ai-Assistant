@@ -8,6 +8,7 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { prisma } from './db';
 import { config } from './config';
 import authRoutes from './routes/auth';
@@ -41,6 +42,9 @@ app.use(cors({
 
 // Body parser with explicit size limit
 app.use(express.json({ limit: '1mb' }));
+
+// Cookie parser for httpOnly auth cookies
+app.use(cookieParser());
 
 // Health check
 app.get('/api/health', (_req, res) => {

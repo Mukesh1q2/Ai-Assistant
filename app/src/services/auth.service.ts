@@ -76,6 +76,8 @@ class AuthService {
      * Check if user is authenticated
      */
     isAuthenticated(): boolean {
+        // With httpOnly cookies, we can't read the cookie directly.
+        // Check localStorage fallback or assume authenticated if /me succeeds.
         return !!localStorage.getItem('auth_token');
     }
 

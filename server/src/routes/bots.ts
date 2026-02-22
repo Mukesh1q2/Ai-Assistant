@@ -61,7 +61,7 @@ function formatBot(bot: any) {
         createdAt: bot.createdAt,
         updatedAt: bot.updatedAt,
         channels: [],
-        taskPacks: safeJsonParse(bot.taskPacks),
+        taskPacks: Array.isArray(bot.taskPacks) ? bot.taskPacks : [],
         metrics: {
             totalExecutions: bot.totalExecutions,
             successfulExecutions: bot.successfulExecutions,

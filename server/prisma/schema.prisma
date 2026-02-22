@@ -81,7 +81,7 @@ model Bot {
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   botChannels BotChannel[]
   executions Execution[]
-  taskPacks  String      @default("[]") @map("task_packs")
+  taskPacks  Json        @default("[]") @map("task_packs")
 
   @@map("bots")
 }

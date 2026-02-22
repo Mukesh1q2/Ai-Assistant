@@ -14,6 +14,27 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const JWT_SECRET = config.JWT_SECRET;
+const IS_PROD = config.NODE_ENV === 'production';
+
+// Helper to set JWT as httpOnly cookie
+function setTokenCookie(res: Response, token: string) {
+    res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: IS_PROD,
+        sameSite: IS_PROD ? 'strict' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/',
+    });
+}
+
+function clearTokenCookie(res: Response) {
+    res.clearCookie('auth_token', {
+        httpOnly: true,
+        secure: IS_PROD,
+        sameSite: IS_PROD ? 'strict' : 'lax',
+        path: '/',
+    });
+}
 
 // Stricter rate limit for auth endpoints (5 attempts per 15 min)
 const authLimiter = rateLimit({
@@ -100,11 +121,14 @@ router.post('/login', async (req: Request, res: Response) => {
 
         const token = jwt.sign({ userId: updatedUser.id }, JWT_SECRET, { expiresIn: '7d' });
 
+        // Set httpOnly cookie
+        setTokenCookie(res, token);
+
         return res.json({
             success: true,
             data: {
                 user: formatUser(updatedUser),
-                token,
+                token, // Keep for backward compat
             },
         });
     } catch (error) {
@@ -146,11 +170,14 @@ router.post('/signup', async (req: Request, res: Response) => {
 
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
+        // Set httpOnly cookie
+        setTokenCookie(res, token);
+
         return res.status(201).json({
             success: true,
             data: {
                 user: formatUser(user),
-                token,
+                token, // Keep for backward compat
             },
         });
     } catch (error) {
@@ -164,6 +191,7 @@ router.post('/signup', async (req: Request, res: Response) => {
 
 // POST /api/auth/logout
 router.post('/logout', (_req: Request, res: Response) => {
+    clearTokenCookie(res);
     res.json({ success: true, message: 'Logged out' });
 });
 
