@@ -10,6 +10,7 @@ const envSchema = z.object({
     CLIENT_URL: z.string().default('http://localhost:5173').transform(str => str.split(',')),
     REDIS_URL: z.string().url().default('redis://localhost:6379'),
     ADMIN_KEY: z.string().optional(),
+    ENCRYPTION_KEY: z.string().min(16, "ENCRYPTION_KEY must be at least 16 characters").optional(),
 });
 
 type EnvConfig = z.infer<typeof envSchema>;

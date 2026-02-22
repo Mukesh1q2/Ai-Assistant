@@ -130,25 +130,118 @@ export const api = {
         apiRequest<T>(endpoint, { method: 'DELETE' }),
 
     // Settings API
-    getSettings: () => api.get<any>('/settings/keys'),
-    updateSettings: (data: any) => api.put<any>('/settings/keys', data),
+    getSettings: () => api.get<SettingsResponse>('/settings/keys'),
+    updateSettings: (data: Partial<SettingsPayload>) => api.put<{ success: boolean; message: string }>('/settings/keys', data),
 
     // Analytics API
-    getAnalytics: (period: string = '30d') => api.get<any>(`/analytics?period=${period}`),
+    getAnalytics: (period: string = '30d') => api.get<AnalyticsResponse>(`/analytics?period=${period}`),
 
     // Bots API
-    getBots: () => api.get<any>('/bots'),
-    getBot: (id: string) => api.get<any>(`/bots/${id}`),
-    createBot: (data: any) => api.post<any>('/bots', data),
-    updateBot: (id: string, data: any) => api.put<any>(`/bots/${id}`, data),
-    deleteBot: (id: string) => api.delete<any>(`/bots/${id}`),
-    deployBot: (id: string) => api.post<any>(`/bots/${id}/deploy`),
-    startBot: (id: string) => api.post<any>(`/bots/${id}/start`),
-    stopBot: (id: string) => api.post<any>(`/bots/${id}/stop`),
+    getBots: () => api.get<PaginatedResponse<BotResponse>>('/bots'),
+    getBot: (id: string) => api.get<BotResponse>(`/bots/${id}`),
+    createBot: (data: CreateBotPayload) => api.post<BotResponse>('/bots', data),
+    updateBot: (id: string, data: Partial<CreateBotPayload>) => api.put<BotResponse>(`/bots/${id}`, data),
+    deleteBot: (id: string) => api.delete<{ success: boolean }>(`/bots/${id}`),
+    deployBot: (id: string) => api.post<BotResponse>(`/bots/${id}/deploy`),
+    startBot: (id: string) => api.post<BotResponse>(`/bots/${id}/start`),
+    stopBot: (id: string) => api.post<BotResponse>(`/bots/${id}/stop`),
 
     // Channels API
-    getChannels: () => api.get<any>('/channels'),
-    connectChannel: (type: string, config: any) => api.post<any>('/channels', { type, config }),
-    disconnectChannel: (id: string) => api.delete<any>(`/channels/${id}`),
-    updateChannel: (id: string, data: any) => api.put<any>(`/channels/${id}`, data),
+    getChannels: () => api.get<PaginatedResponse<ChannelResponse>>('/channels'),
+    connectChannel: (type: string, config: Record<string, unknown>) => api.post<ChannelResponse>('/channels', { type, config }),
+    disconnectChannel: (id: string) => api.delete<{ success: boolean }>(`/channels/${id}`),
+    updateChannel: (id: string, data: Record<string, unknown>) => api.put<ChannelResponse>(`/channels/${id}`, data),
 };
+
+// ——— Response types for typed API methods ———
+
+interface SettingsResponse {
+    openai_api_key: string | null;
+    gemini_api_key: string | null;
+    anthropic_api_key: string | null;
+    has_openai: boolean;
+    has_gemini: boolean;
+    has_anthropic: boolean;
+}
+
+interface SettingsPayload {
+    openai_api_key: string;
+    gemini_api_key: string;
+    anthropic_api_key: string;
+}
+
+interface BotResponse {
+    id: string;
+    name: string;
+    description: string;
+    avatar: string;
+    status: string;
+    type: string;
+    createdAt: string;
+    updatedAt: string;
+    channels: unknown[];
+    taskPacks: string[];
+    metrics: {
+        totalExecutions: number;
+        successfulExecutions: number;
+        failedExecutions: number;
+        lastActive: string | null;
+        uptime: number;
+    };
+    config: {
+        personality: string;
+        memoryScope: string;
+        systemPrompt?: string;
+        modelProvider?: string;
+        modelName?: string;
+        temperature?: number;
+        guardrails: unknown[];
+        permissions: unknown[];
+    };
+}
+
+interface CreateBotPayload {
+    name: string;
+    description?: string;
+    type: string;
+    avatar?: string;
+    personality?: string;
+    memoryScope?: string;
+    systemPrompt?: string;
+    modelProvider?: string;
+    modelName?: string;
+    temperature?: number;
+}
+
+interface ChannelResponse {
+    id: string;
+    type: string;
+    name: string;
+    status: string;
+    config: Record<string, unknown>;
+    connectedAt: string | null;
+}
+
+interface AnalyticsResponse {
+    executions: {
+        total: number;
+        successful: number;
+        failed: number;
+        byDay: Record<string, number>;
+        byPack: Record<string, number>;
+    };
+    channels: {
+        total: number;
+        active: number;
+        messagesReceived: number;
+        messagesSent: number;
+        byChannel: Record<string, number>;
+    };
+    bots: {
+        total: number;
+        active: number;
+        uptime: number;
+        byBot: Record<string, number>;
+    };
+    period: string;
+}

@@ -7,6 +7,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { encrypt, decrypt } from '../utils/crypto';
 
 const router = Router();
 
@@ -32,8 +33,12 @@ router.get('/keys', async (req: AuthRequest, res: Response) => {
 
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        // Mask keys for security — show first 4 and last 4 chars only
-        const mask = (key: string | null) => key ? key.substring(0, 4) + '...' + key.substring(key.length - 4) : null;
+        // Mask keys for security — decrypt then show first 4 and last 4 chars only
+        const mask = (key: string | null) => {
+            if (!key) return null;
+            const decrypted = decrypt(key);
+            return decrypted.substring(0, 4) + '...' + decrypted.substring(decrypted.length - 4);
+        };
 
         res.json({
             openai_api_key: mask(user.openaiApiKey),
@@ -57,13 +62,13 @@ router.put('/keys', async (req: AuthRequest, res: Response) => {
         const updateData: Record<string, string> = {};
 
         if (data.openai_api_key) {
-            updateData.openaiApiKey = data.openai_api_key;
+            updateData.openaiApiKey = encrypt(data.openai_api_key);
         }
         if (data.gemini_api_key) {
-            updateData.geminiApiKey = data.gemini_api_key;
+            updateData.geminiApiKey = encrypt(data.gemini_api_key);
         }
         if (data.anthropic_api_key) {
-            updateData.anthropicApiKey = data.anthropic_api_key;
+            updateData.anthropicApiKey = encrypt(data.anthropic_api_key);
         }
 
         if (Object.keys(updateData).length === 0) {
