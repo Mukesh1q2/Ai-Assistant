@@ -5,7 +5,8 @@ import { prisma } from '../db';
 import { aiService } from '../services/ai';
 import { TelegramIntegration, WhatsAppIntegration } from '../integrations';
 
-export const messageWorker = new Worker(
+// Only start the worker if Redis is available
+export const messageWorker = connection ? new Worker(
     QUEUE_NAME,
     async (job: Job<IncomingMessageJob>) => {
         const { integrationId, platform, messageData } = job.data;
@@ -140,12 +141,18 @@ export const messageWorker = new Worker(
         connection: connection as any,
         concurrency: 5, // Process 5 messages concurrently
     }
-);
+) : null;
 
-messageWorker.on('completed', (job) => {
-    console.log(`✅ Job ${job.id} completed`);
-});
+if (messageWorker) {
+    messageWorker.on('completed', (job) => {
+        console.log(`✅ Job ${job.id} completed`);
+    });
 
-messageWorker.on('failed', (job, err) => {
-    console.error(`❌ Job ${job?.id} failed with error ${err.message}`);
-});
+    messageWorker.on('failed', (job, err) => {
+        console.error(`❌ Job ${job?.id} failed with error ${err.message}`);
+    });
+
+    console.log('🔧 Message worker started');
+} else {
+    console.warn('⚠️  Message worker disabled — Redis not available');
+}
