@@ -29,6 +29,8 @@ export default function SettingsPanel() {
     gemini_api_key: '',
     anthropic_api_key: '',
   });
+  // Track which keys were actually edited to avoid sending masked values back
+  const [editedKeys, setEditedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchSettings();
@@ -55,14 +57,25 @@ export default function SettingsPanel() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setKeys({ ...keys, [e.target.name]: e.target.value });
+    setEditedKeys(prev => new Set(prev).add(e.target.name));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editedKeys.size === 0) {
+      toast.info('No changes to save');
+      return;
+    }
     setSaving(true);
     try {
-      await api.updateSettings(keys);
+      // Only send keys that were actually edited — not masked values
+      const payload: Record<string, string> = {};
+      editedKeys.forEach(key => {
+        payload[key] = (keys as any)[key];
+      });
+      await api.updateSettings(payload);
       toast.success('API Keys updated successfully');
+      setEditedKeys(new Set());
     } catch (error: any) {
       toast.error(error.message || 'Failed to update settings');
     } finally {
@@ -191,7 +204,7 @@ export default function SettingsPanel() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Your keys are encrypted at rest. We never share them with third parties.
+              Your keys are stored securely on the server and are never exposed to the frontend after saving.
               They are only used to communicate directly with the AI providers for your bots.
             </p>
           </CardContent>

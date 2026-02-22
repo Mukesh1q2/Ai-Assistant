@@ -78,7 +78,12 @@ export default function BotsPanel() {
       description: template.description,
       avatar: template.avatar,
       type: template.type,
-      config: template.config,
+      personality: template.config?.personality,
+      memoryScope: template.config?.memoryScope,
+      systemPrompt: template.config?.systemPrompt,
+      modelProvider: template.config?.modelProvider,
+      modelName: template.config?.modelName,
+      temperature: template.config?.temperature,
     });
     setCreatingBot(null);
     setCreateDialogOpen(false);
@@ -256,7 +261,9 @@ export default function BotsPanel() {
                       className="text-red-500"
                       onClick={(e) => {
                         e.stopPropagation();
-                        deleteBot(bot.id);
+                        if (window.confirm(`Delete "${bot.name}"? This cannot be undone.`)) {
+                          deleteBot(bot.id);
+                        }
                       }}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -425,7 +432,7 @@ export default function BotsPanel() {
                         <Input
                           value={selectedBot.config.personality}
                           onChange={(e) => updateBot(selectedBot.id, {
-                            config: { ...selectedBot.config, personality: e.target.value }
+                            personality: e.target.value
                           })}
                         />
                       </div>
@@ -435,7 +442,7 @@ export default function BotsPanel() {
                           className="w-full p-2 rounded-md border border-input bg-background"
                           value={selectedBot.config.memoryScope}
                           onChange={(e) => updateBot(selectedBot.id, {
-                            config: { ...selectedBot.config, memoryScope: e.target.value as any }
+                            memoryScope: e.target.value
                           })}
                         >
                           <option value="user">User Only</option>
@@ -451,7 +458,7 @@ export default function BotsPanel() {
                           value={selectedBot.config.systemPrompt || ''}
                           placeholder="You are a helpful assistant..."
                           onChange={(e) => updateBot(selectedBot.id, {
-                            config: { ...selectedBot.config, systemPrompt: e.target.value }
+                            systemPrompt: e.target.value
                           })}
                         />
                       </div>
@@ -463,7 +470,7 @@ export default function BotsPanel() {
                             className="w-full p-2 rounded-md border border-input bg-background"
                             value={selectedBot.config.modelProvider || 'openai'}
                             onChange={(e) => updateBot(selectedBot.id, {
-                              config: { ...selectedBot.config, modelProvider: e.target.value }
+                              modelProvider: e.target.value
                             })}
                           >
                             <option value="openai">OpenAI</option>
@@ -480,7 +487,7 @@ export default function BotsPanel() {
                             max="1"
                             value={selectedBot.config.temperature || 0.7}
                             onChange={(e) => updateBot(selectedBot.id, {
-                              config: { ...selectedBot.config, temperature: parseFloat(e.target.value) }
+                              temperature: parseFloat(e.target.value)
                             })}
                           />
                         </div>

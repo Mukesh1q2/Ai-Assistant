@@ -323,7 +323,7 @@ export default function ChannelPanel() {
                       ) : (
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          updateChannel(channel.id, { status: 'connected' });
+                          toast.info('Please reconnect through the channel setup wizard');
                         }}>
                           <CheckCircle className="w-4 h-4 mr-2" />
                           Reconnect
@@ -332,7 +332,12 @@ export default function ChannelPanel() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-red-500"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Remove "${channel.name}"? This will disconnect all bots from it.`)) {
+                            disconnectChannel(channel.id);
+                          }
+                        }}
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Remove
@@ -426,7 +431,7 @@ export default function ChannelPanel() {
                         Disconnect
                       </Button>
                     ) : (
-                      <Button size="sm" onClick={() => updateChannel(selectedChannel.id, { status: 'connected' })}>
+                      <Button size="sm" onClick={() => toast.info('Please reconnect through the channel setup wizard')}>
                         Reconnect
                       </Button>
                     )}
@@ -469,7 +474,12 @@ export default function ChannelPanel() {
                     <p className="text-sm text-muted-foreground mb-4">
                       Removing this channel will disconnect all bots from it.
                     </p>
-                    <Button variant="destructive" size="sm">
+                    <Button variant="destructive" size="sm" onClick={() => {
+                      if (window.confirm(`Remove "${selectedChannel.name}"? This will disconnect all bots from it.`)) {
+                        disconnectChannel(selectedChannel.id);
+                        setDetailOpen(false);
+                      }
+                    }}>
                       <Trash2 className="w-4 h-4 mr-2" />
                       Remove Channel
                     </Button>

@@ -83,6 +83,10 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         // Safe Number converter for BigInts returned by postgres COUNT
         const num = (val: any) => Number(val || 0);
 
+        // 6. Actual bot counts
+        const totalBots = await prisma.bot.count({ where: { userId } });
+        const activeBots = await prisma.bot.count({ where: { userId, status: 'active' } });
+
         // Format data for frontend
         const data = {
             executions: {
@@ -100,9 +104,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
                 byChannel: channelStats.reduce((acc, curr) => ({ ...acc, [curr.type]: num(curr.count) }), {}),
             },
             bots: {
-                total: 0,
-                active: 0,
-                uptime: 100,
+                total: totalBots,
+                active: activeBots,
+                uptime: totalBots > 0 ? Math.round((activeBots / totalBots) * 100) : 100,
                 byBot: botUsage.reduce((acc, curr) => ({ ...acc, [curr.name]: num(curr.count) }), {}),
             },
             period

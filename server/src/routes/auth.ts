@@ -7,12 +7,24 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import rateLimit from 'express-rate-limit';
 import { prisma } from '../db';
 import { config } from '../config';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const JWT_SECRET = config.JWT_SECRET;
+
+// Stricter rate limit for auth endpoints (5 attempts per 15 min)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many attempts. Please try again later.' },
+});
+router.use('/login', authLimiter);
+router.use('/signup', authLimiter);
 
 // Validation schemas
 const loginSchema = z.object({

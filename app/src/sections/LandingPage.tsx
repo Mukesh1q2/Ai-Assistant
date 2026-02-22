@@ -232,26 +232,26 @@ export default function LandingPage() {
   const [countryCode, setCountryCode] = useState('US');
 
   useEffect(() => {
-    const fetchLocation = async () => {
+    // Detect currency from browser language instead of calling external IP API
+    const detectCurrency = () => {
       try {
-        const response = await fetch('https://ipapi.co/json/');
-        const data = await response.json();
-        if (data.country_code === 'IN') {
+        const lang = navigator.language || 'en-US';
+        if (lang.endsWith('-IN') || lang === 'hi') {
           setCurrency('INR');
           setCountryCode('IN');
-        } else if (['GB', 'UK'].includes(data.country_code)) {
+        } else if (lang.endsWith('-GB')) {
           setCurrency('GBP');
           setCountryCode('GB');
-        } else if (['EU', 'DE', 'FR', 'IT', 'ES', 'NL'].includes(data.country_code)) {
+        } else if (['de', 'fr', 'it', 'es', 'nl'].some(l => lang.startsWith(l))) {
           setCurrency('EUR');
           setCountryCode('EU');
         }
-      } catch (error) {
-        console.error('Failed to fetch location:', error);
+      } catch {
+        // Default USD — no action needed
       }
     };
 
-    fetchLocation();
+    detectCurrency();
 
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);

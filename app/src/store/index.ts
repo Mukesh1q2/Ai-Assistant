@@ -139,8 +139,8 @@ interface BotState {
   selectedBot: Bot | null;
   isLoading: boolean;
   fetchBots: () => Promise<void>;
-  createBot: (bot: Partial<Bot>) => Promise<Bot>;
-  updateBot: (id: string, updates: Partial<Bot>) => void;
+  createBot: (bot: Record<string, any>) => Promise<Bot>;
+  updateBot: (id: string, updates: Record<string, any>) => void;
   deleteBot: (id: string) => void;
   selectBot: (bot: Bot | null) => void;
   toggleBotStatus: (id: string) => void;

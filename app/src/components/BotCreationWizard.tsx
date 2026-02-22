@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, 
-  ChevronRight, 
-  ChevronLeft, 
-  Check, 
+import {
+  X,
+  ChevronRight,
+  ChevronLeft,
+  Check,
   Bot,
   Package,
   MessageSquare,
@@ -30,13 +30,13 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
   const [step, setStep] = useState<WizardStep>(1);
   const [isDeploying, setIsDeploying] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  
+
   // Selection states
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [botName, setBotName] = useState('');
   const [selectedPacks, setSelectedPacks] = useState<string[]>([]);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
-  
+
   const { createBot } = useBotStore();
   const { packs } = useTaskPackStore();
   const { channels } = useChannelStore();
@@ -50,16 +50,16 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
   };
 
   const togglePack = (packId: string) => {
-    setSelectedPacks(prev => 
-      prev.includes(packId) 
+    setSelectedPacks(prev =>
+      prev.includes(packId)
         ? prev.filter(id => id !== packId)
         : [...prev, packId]
     );
   };
 
   const toggleChannel = (channelId: string) => {
-    setSelectedChannels(prev => 
-      prev.includes(channelId) 
+    setSelectedChannels(prev =>
+      prev.includes(channelId)
         ? prev.filter(id => id !== channelId)
         : [...prev, channelId]
     );
@@ -67,26 +67,32 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
 
   const handleDeploy = async () => {
     setIsDeploying(true);
-    
+
     const template = botTemplates.find(t => t.name === selectedTemplate);
     if (!template) return;
-    
+
+    // Flatten config into top-level fields to match backend schema
     await createBot({
       name: botName || template.name,
       description: template.description,
       avatar: template.avatar,
       type: template.type,
-      config: template.config,
+      personality: template.config?.personality,
+      memoryScope: template.config?.memoryScope,
+      systemPrompt: template.config?.systemPrompt,
+      modelProvider: template.config?.modelProvider,
+      modelName: template.config?.modelName,
+      temperature: template.config?.temperature,
     });
-    
+
     // Simulate deployment delay
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     setIsDeploying(false);
     setIsComplete(true);
-    
+
     toast.success(`${botName || template.name} deployed successfully!`);
-    
+
     // Close after showing success
     setTimeout(() => {
       onClose();
@@ -120,7 +126,7 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
         <h3 className="text-lg font-semibold text-foreground">Choose Your Assistant</h3>
         <p className="text-sm text-muted-foreground">Select a bot template to get started</p>
       </div>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto p-1">
         {botTemplates.map((template) => (
           <button
@@ -129,14 +135,13 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
               setSelectedTemplate(template.name);
               setBotName(template.name);
             }}
-            className={`flex items-start gap-3 p-4 rounded-xl border transition-all text-left ${
-              selectedTemplate === template.name
+            className={`flex items-start gap-3 p-4 rounded-xl border transition-all text-left ${selectedTemplate === template.name
                 ? 'border-primary bg-primary/5'
                 : 'border-border hover:border-primary/50 hover:bg-muted/50'
-            }`}
+              }`}
           >
-            <img 
-              src={template.avatar} 
+            <img
+              src={template.avatar}
               alt={template.name}
               className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
             />
@@ -175,8 +180,8 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
         {selectedTemplate && (
           <div className="p-4 rounded-xl bg-muted/50 border border-border">
             <div className="flex items-center gap-3 mb-2">
-              <img 
-                src={botTemplates.find(t => t.name === selectedTemplate)?.avatar} 
+              <img
+                src={botTemplates.find(t => t.name === selectedTemplate)?.avatar}
                 alt=""
                 className="w-10 h-10 rounded-lg object-cover"
               />
@@ -203,11 +208,10 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
           <button
             key={pack.id}
             onClick={() => togglePack(pack.id)}
-            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left ${
-              selectedPacks.includes(pack.id)
+            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left ${selectedPacks.includes(pack.id)
                 ? 'border-primary bg-primary/5'
                 : 'border-border hover:border-primary/50 hover:bg-muted/50'
-            }`}
+              }`}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -239,11 +243,10 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
           <button
             key={channel.id}
             onClick={() => toggleChannel(channel.id)}
-            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left ${
-              selectedChannels.includes(channel.id)
+            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left ${selectedChannels.includes(channel.id)
                 ? 'border-primary bg-primary/5'
                 : 'border-border hover:border-primary/50 hover:bg-muted/50'
-            }`}
+              }`}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -264,8 +267,8 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
       {channels.length === 0 && (
         <div className="text-center py-8">
           <p className="text-muted-foreground">No channels connected yet.</p>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="mt-4"
             onClick={() => {
               onClose();
@@ -354,7 +357,7 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
           {/* Progress Bar */}
           {!isDeploying && !isComplete && (
             <div className="w-full h-1 bg-muted">
-              <motion.div 
+              <motion.div
                 className="h-full bg-gradient-to-r from-[#4F8CFF] to-[#7C5CFF]"
                 initial={{ width: 0 }}
                 animate={{ width: `${(step / 4) * 100}%` }}
@@ -396,7 +399,7 @@ export default function BotCreationWizard({ isOpen, onClose }: BotCreationWizard
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
-              
+
               <div className="flex gap-2">
                 {step < 4 ? (
                   <Button

@@ -15,29 +15,29 @@ router.use(authMiddleware);
 
 // Validation schemas
 const createBotSchema = z.object({
-    name: z.string().min(1),
-    description: z.string().optional().default(''),
-    type: z.string(),
-    avatar: z.string().optional(),
-    personality: z.string().optional(),
+    name: z.string().min(1).max(100),
+    description: z.string().max(2000).optional().default(''),
+    type: z.string().max(50),
+    avatar: z.string().max(500).optional(),
+    personality: z.string().max(500).optional(),
     memoryScope: z.enum(['user', 'family', 'global']).optional(),
-    systemPrompt: z.string().optional(),
-    modelProvider: z.string().optional(),
-    modelName: z.string().optional(),
-    temperature: z.number().optional(),
+    systemPrompt: z.string().max(10000).optional(),
+    modelProvider: z.string().max(50).optional(),
+    modelName: z.string().max(100).optional(),
+    temperature: z.number().min(0).max(2).optional(),
 });
 
 const updateBotSchema = z.object({
-    name: z.string().min(1).optional(),
-    description: z.string().optional(),
-    avatar: z.string().optional(),
+    name: z.string().min(1).max(100).optional(),
+    description: z.string().max(2000).optional(),
+    avatar: z.string().max(500).optional(),
     status: z.enum(['active', 'inactive', 'deploying', 'error']).optional(),
-    personality: z.string().optional(),
+    personality: z.string().max(500).optional(),
     memoryScope: z.enum(['user', 'family', 'global']).optional(),
-    systemPrompt: z.string().optional(),
-    modelProvider: z.string().optional(),
-    modelName: z.string().optional(),
-    temperature: z.number().optional(),
+    systemPrompt: z.string().max(10000).optional(),
+    modelProvider: z.string().max(50).optional(),
+    modelName: z.string().max(100).optional(),
+    temperature: z.number().min(0).max(2).optional(),
 });
 
 // Safe JSON parse helper
